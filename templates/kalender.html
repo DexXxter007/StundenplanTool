@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div id='calendar-container' class="p-3 bg-white rounded shadow-sm">
+        <div id='calendar'></div>
+    </div>
+</div>
+
+<!-- Bootstrap Modal for adding/editing events -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventModalLabel">Termin bearbeiten</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId">
+                    <div class="mb-3">
+                        <label for="eventTitle" class="form-label">Titel</label>
+                        <input type="text" class="form-control" id="eventTitle" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="eventStart" class="form-label">Start</label>
+                            <input type="datetime-local" class="form-control" id="eventStart" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="eventEnd" class="form-label">Ende</label>
+                            <input type="datetime-local" class="form-control" id="eventEnd">
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="eventAllDay">
+                        <label class="form-check-label" for="eventAllDay">
+                            Ganztägig
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger me-auto" id="deleteEventButton">Löschen</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="saveEventButton">Speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<!-- FullCalendar CSS -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/de.js'></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+    var eventForm = document.getElementById('eventForm');
+    var eventIdInput = document.getElementById('eventId');
+    var eventTitleInput = document.getElementById('eventTitle');
+    var eventStartInput = document.getElementById('eventStart');
+    var eventEndInput = document.getElementById('eventEnd');
+    var eventAllDayInput = document.getElementById('eventAllDay');
+
+    // Hilfsfunktion, um ein Date-Objekt (das bereits in lokaler Zeit ist)
+    // in das 'YYYY-MM-DDTHH:mm' Format für datetime-local Input zu bringen.
+    // Wichtig: Diese Funktion nimmt an, dass das übergebene Date-Objekt
+    // bereits die gewünschte lokale Zeit repräsentiert.
+    function formatDateToDatetimeLocalInput(date) {
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'de',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        events: '/api/events',
+        editable: true,
+        selectable: true,
+
+        // --- Termin erstellen (durch Klicken auf einen Tag/Zeit) ---
+        select: function(info) {
+            eventForm.reset();
+            eventIdInput.value = '';
+            document.getElementById('eventModalLabel').innerText = 'Neuer Termin';
+            document.getElementById('deleteEventButton').style.display = 'none';
+
+            eventStartInput.value = formatDateToDatetimeLocalInput(info.start);
+            if (info.allDay && info.end) {
+                // For all-day events, FullCalendar's info.end is the day *after* the event.
+                // We want the input to show the actual last day of the event.
+                const adjustedEndDate = new Date(info.end.getTime());
+                adjustedEndDate.setDate(adjustedEndDate.getDate() - 1);
+                eventEndInput.value = formatDateToDatetimeLocalInput(adjustedEndDate);
+            } else {
+                eventEndInput.value = info.end ? formatDateToDatetimeLocalInput(info.end) : '';
+            }
+            eventAllDayInput.checked = info.allDay;
+
+            eventModal.show();
+            calendar.unselect();
+        },
+
+        // --- Termin bearbeiten (durch Klicken auf einen Termin) ---
+        eventClick: function(info) {
+            eventForm.reset();
+            var event = info.event;
+
+            document.getElementById('eventModalLabel').innerText = 'Termin bearbeiten';
+            eventIdInput.value = event.id;
+            eventTitleInput.value = event.extendedProps.raw_title;
+            eventStartInput.value = formatDateToDatetimeLocalInput(event.start);
+            if (event.allDay && event.end) {
+                const adjustedEndDate = new Date(event.end.getTime());
+                adjustedEndDate.setDate(adjustedEndDate.getDate() - 1);
+                eventEndInput.value = formatDateToDatetimeLocalInput(adjustedEndDate);
+            } else {
+                eventEndInput.value = event.end ? formatDateToDatetimeLocalInput(event.end) : '';
+            }
+            eventAllDayInput.checked = event.allDay;
+
+            document.getElementById('deleteEventButton').style.display = 'block'; // Button immer anzeigen
+            
+            eventModal.show();
+        },
+
+        // --- Termin verschieben (Drag & Drop) ---
+        eventDrop: function(info) {
+            if (!info.event.editable) {
+                info.revert();
+                alert("Sie haben keine Berechtigung, diesen Termin zu verschieben.");
+                return;
+            }
+            var eventData = {
+                title: info.event.extendedProps.raw_title,
+                start: info.event.start.toISOString(),
+                end: info.event.end ? info.event.end.toISOString() : null,
+                allDay: info.event.allDay
+            };
+            fetch('/api/events/update/' + info.event.id, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(eventData)
+            }).then(res => res.json()).then(data => {
+                if (data.status !== 'success') {
+                    alert('Fehler beim Verschieben: ' + data.message);
+                    info.revert();
+                }
+            });
+        },
+
+        // --- Termin in der Länge ändern ---
+        eventResize: function(info) {
+            if (!info.event.editable) {
+                info.revert();
+                alert("Sie haben keine Berechtigung, diesen Termin zu ändern.");
+                return;
+            }
+            var eventData = {
+                title: info.event.extendedProps.raw_title,
+                start: info.event.start.toISOString(),
+                end: info.event.end.toISOString(),
+                allDay: info.event.allDay
+            };
+            fetch('/api/events/update/' + info.event.id, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(eventData)
+            }).then(res => res.json()).then(data => {
+                if (data.status !== 'success') {
+                    alert('Fehler beim Ändern: ' + data.message);
+                    info.revert();
+                }
+            });
+        }
+    });
+
+    // --- Modal-Buttons ---
+    document.getElementById('saveEventButton').addEventListener('click', function() {
+        var eventId = eventIdInput.value;
+        var isAllDay = eventAllDayInput.checked;
+        var startValue = eventStartInput.value;
+        var endValue = eventEndInput.value;
+
+        var eventData = {
+            title: eventTitleInput.value,
+            allDay: isAllDay
+        };
+
+        if (isAllDay) {
+            // For all-day events, treat the date part of the input as a floating date
+            // and construct a UTC ISO string to avoid timezone shifts.
+            eventData.start = startValue.substring(0, 10) + "T00:00:00Z";
+            if (endValue) {
+                // Add 1 day for exclusive end date required by FullCalendar
+                let endDate = new Date(endValue.substring(0, 10) + "T00:00:00Z");
+                endDate.setUTCDate(endDate.getUTCDate() + 1);
+                eventData.end = endDate.toISOString();
+            } else {
+                // If there's no end date, it's a single all-day event.
+                // The end is the start of the next day.
+                let endDate = new Date(startValue.substring(0, 10) + "T00:00:00Z");
+                endDate.setUTCDate(endDate.getUTCDate() + 1);
+                eventData.end = endDate.toISOString();
+            }
+        } else {
+            // For timed events, the input is in local time. new Date() parses it correctly
+            // and .toISOString() converts it to UTC for the backend.
+            eventData.start = new Date(startValue).toISOString();
+            eventData.end = endValue ? new Date(endValue).toISOString() : null;
+        }
+
+        var url = eventId ? '/api/events/update/' + eventId : '/api/events/add';
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(eventData)
+        }).then(res => res.json()).then(data => {
+            if (data.status === 'success') {
+                eventModal.hide();
+                calendar.refetchEvents();
+            } else {
+                alert('Fehler: ' + data.message);
+            }
+        });
+    });
+
+    document.getElementById('deleteEventButton').addEventListener('click', function() {
+        var eventId = eventIdInput.value;
+        var eventTitle = document.getElementById('eventTitle').value;
+        if (eventId && confirm("Möchten Sie den Termin '" + eventTitle + "' wirklich löschen?")) {
+            fetch('/api/events/delete/' + eventId, {
+                method: 'POST'
+            })
+            .then(res => {
+                if (res.status === 403) {
+                    throw new Error('Sie haben keine Berechtigung, diesen Termin zu löschen.');
+                }
+                if (!res.ok) {
+                    throw new Error('Ein Serverfehler ist aufgetreten.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    eventModal.hide();
+                    calendar.refetchEvents();
+                } else {
+                    throw new Error(data.message || 'Ein unbekannter Fehler ist aufgetreten.');
+                }
+            })
+            .catch(error => {
+                alert(error.message);
+            });
+        }
+    });
+
+    calendar.render();
+});
+</script>
+{% endblock %}

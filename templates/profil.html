@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Mein Profil</h1>
+    <form method="POST" action="{{ url_for('profil') }}" class="mt-4" style="max-width: 500px;">
+        <div class="mb-3">
+            <label for="username" class="form-label">Benutzername</label>
+            <input type="text" class="form-control" id="username" name="username" value="{{ current_user.username }}" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">E-Mail</label>
+            <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email }}" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="farbe" class="form-label">Kalenderfarbe</label>
+            <select class="form-select" id="farbe" name="farbe">
+                {% for f in user_farben %}
+                <option value="{{ f }}" style="background:{{ f }};color:#fff;" {% if current_user.farbe == f %}selected{% endif %}>{{ f }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Neues Passwort (optional)</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Leer lassen, um nicht zu ändern">
+        </div>
+        <button type="submit" class="btn btn-primary">Profil speichern</button>
+    </form>
+</div>
+{% endblock %}

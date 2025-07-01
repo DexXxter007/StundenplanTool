@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>{{ title }}</h1>
+</div>
+
+<!-- Add Class Form -->
+<div class="card mb-4">
+    <div class="card-header">Neue Klasse hinzufügen</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('klasse_save') }}">
+            <h5>Allgemeine Daten</h5>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4"><label for="name" class="form-label">Klassenname</label><input type="text" class="form-control" id="name" name="name" required></div>
+                <div class="col-md-2"><label for="max_stunden_klasse" class="form-label">Max Std./Tag</label><input type="number" class="form-control" id="max_stunden_klasse" name="max_stunden_klasse" value="6"></div>
+                <div class="col-md-6"><label class="form-label">Woche</label><div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="woche" id="woche_a" value="A"><label class="form-check-label" for="woche_a">A</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="woche" id="woche_b" value="B"><label class="form-check-label" for="woche_b">B</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="woche" id="woche_ab" value="AB" checked><label class="form-check-label" for="woche_ab">A & B</label></div></div></div>
+            </div>
+            <div class="mb-3"><label class="form-label">Arbeitstage</label><div>{% for tag in tage_der_woche %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="arbeitstage" value="{{ tag }}" id="arbeitstag_{{ tag }}" checked><label class="form-check-label" for="arbeitstag_{{ tag }}">{{ tag }}</label></div>{% endfor %}</div></div>
+            
+            <hr>
+            <h5>Angebote definieren</h5>
+            <p class="text-muted small">Tragen Sie die Soll-Stunden für jedes Angebot ein. Nur Angebote mit Stunden > 0 werden gespeichert.</p>
+            <div class="row">
+                {% for angebot in alle_angebote %}
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ angebot.name }}</h6>
+                            <div class="mb-2">
+                                <label for="angebot_{{ angebot.id }}_gesamt" class="form-label small">Stunden Gesamt</label>
+                                <input type="number" class="form-control form-control-sm" name="angebot_{{ angebot.id }}_gesamt" placeholder="0">
+                            </div>
+                            <div>
+                                <label for="angebot_{{ angebot.id }}_teilung" class="form-label small">davon Teilungsstunden</label>
+                                <input type="number" class="form-control form-control-sm" name="angebot_{{ angebot.id }}_teilung" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-3"><button type="submit" class="btn btn-primary">Klasse hinzufügen</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Class List Table -->
+<div class="card">
+    <div class="card-header">Vorhandene Klassen</div>
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead><tr><th>Name</th><th>Max Std./Tag</th><th>Woche</th><th>Arbeitstage</th><th>Angebote (Definiert)</th><th>Aktionen</th></tr></thead>
+            <tbody>
+                {% for klasse in klassen_liste %}
+                <tr>
+                    <td>{{ klasse.name }}</td>
+                    <td>{{ klasse.max_stunden_klasse }}</td>
+                    <td>{{ klasse.woche }}</td>
+                    <td>{{ klasse.arbeitstage|join(', ') }}</td>
+                    <td>{{ klasse.angebote_stunden|map(attribute='angebot')|join(', ') }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editKlasseModal"
+                                data-klasse-id="{{ klasse.id }}"
+                                data-name="{{ klasse.name }}"
+                                data-max-stunden="{{ klasse.max_stunden_klasse }}"
+                                data-woche="{{ klasse.woche }}"
+                                data-arbeitstage='{{ klasse.arbeitstage|tojson|safe }}'
+                                data-angebote-stunden='{{ klasse.angebote_stunden|tojson|safe }}'>
+                            Bearbeiten
+                        </button>
+                        <form action="{{ url_for('klasse_delete', klasse_id=klasse.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie die Klasse {{ klasse.name }} löschen möchten?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Löschen</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Class Modal -->
+<div class="modal fade" id="editKlasseModal" tabindex="-1" aria-labelledby="editKlasseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('klasse_save') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editKlasseModalLabel">Klasse bearbeiten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="klasse_id" id="edit_klasse_id">
+                    <h5>Allgemeine Daten</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4"><label for="edit_name" class="form-label">Klassenname</label><input type="text" class="form-control" id="edit_name" name="name" required></div>
+                        <div class="col-md-2"><label for="edit_max_stunden_klasse" class="form-label">Max Std./Tag</label><input type="number" class="form-control" id="edit_max_stunden_klasse" name="max_stunden_klasse"></div>
+                        <div class="col-md-6"><label class="form-label">Woche</label><div id="edit_woche_container">{% for w in ['A', 'B', 'AB'] %}<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="woche" id="edit_woche_{{ w }}" value="{{ w }}"><label class="form-check-label" for="edit_woche_{{ w }}">{{ w }}</label></div>{% endfor %}</div></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Arbeitstage</label><div id="edit_arbeitstage_container">{% for tag in tage_der_woche %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="arbeitstage" value="{{ tag }}" id="edit_arbeitstag_{{ tag }}"><label class="form-check-label" for="edit_arbeitstag_{{ tag }}">{{ tag }}</label></div>{% endfor %}</div></div>
+                    <hr>
+                    <h5>Angebote definieren</h5>
+                    <div class="row" id="edit_angebote_container">
+                        {% for angebot in alle_angebote %}
+                        <div class="col-md-4 mb-3 angebot-row" data-angebot-name="{{ angebot.name }}">
+                            <div class="card h-100"><div class="card-body">
+                                <h6 class="card-title">{{ angebot.name }}</h6>
+                                <div class="mb-2"><label for="edit_angebot_{{ angebot.id }}_gesamt" class="form-label small">Stunden Gesamt</label><input type="number" class="form-control form-control-sm angebot-stunden-input" name="angebot_{{ angebot.id }}_gesamt" id="edit_angebot_{{ angebot.id }}_gesamt" placeholder="0"></div>
+                                <div><label for="edit_angebot_{{ angebot.id }}_teilung" class="form-label small">davon Teilungsstunden</label><input type="number" class="form-control form-control-sm angebot-stunden-input" name="angebot_{{ angebot.id }}_teilung" id="edit_angebot_{{ angebot.id }}_teilung" placeholder="0"></div>
+                            </div></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var editModal = document.getElementById('editKlasseModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            
+            // Populate simple fields
+            editModal.querySelector('#edit_klasse_id').value = button.dataset.klasseId;
+            editModal.querySelector('#edit_name').value = button.dataset.name;
+            editModal.querySelector('#edit_max_stunden_klasse').value = button.dataset.maxStunden;
+
+            // Populate radio buttons for 'woche'
+            var woche = button.dataset.woche;
+            editModal.querySelector('input[name="woche"][value="' + woche + '"]').checked = true;
+
+            // Populate checkboxes for 'arbeitstage'
+            var arbeitstage = JSON.parse(button.dataset.arbeitstage);
+            editModal.querySelectorAll('#edit_arbeitstage_container input[type="checkbox"]').forEach(function(checkbox) {
+                checkbox.checked = arbeitstage.includes(checkbox.value);
+            });
+
+            // Populate 'angebote_stunden'
+            var angeboteStunden = JSON.parse(button.dataset.angeboteStunden);
+            var angeboteMap = {};
+            angeboteStunden.forEach(function(item) {
+                angeboteMap[item.angebot] = item;
+            });
+
+            // Reset all offer inputs first
+            editModal.querySelectorAll('.angebot-stunden-input').forEach(function(input) {
+                input.value = '';
+            });
+
+            // Populate the inputs based on the map
+            editModal.querySelectorAll('#edit_angebote_container .angebot-row').forEach(function(row) {
+                var angebotName = row.dataset.angebotName;
+                if (angeboteMap[angebotName]) {
+                    var data = angeboteMap[angebotName];
+                    row.querySelector('input[name*="_gesamt"]').value = data.stunden_gesamt || '';
+                    row.querySelector('input[name*="_teilung"]').value = data.stunden_teilung || '';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

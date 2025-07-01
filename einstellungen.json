@@ -1,0 +1,31 @@
+{
+  "zeiten": [
+    "07:55-08:40",
+    "Pause 08:40-08:50",
+    "08:50-09:35",
+    "Pause 09:35-09:45",
+    "09:45-10:30",
+    "Pause 10:30-10:40",
+    "10:40-11:25",
+    "Pause 11:25-12:25",
+    "12:25-13:10",
+    "Pause 13:10-13:20",
+    "13:20-14:05"
+  ],
+  "klassen_reihenfolge_a": [
+    "BVB1 Holz",
+    "BVB2 Farbe",
+    "BA Bau",
+    "BFSG+1",
+    "BFSG+2",
+    "Sek1"
+  ],
+  "klassen_reihenfolge_b": [
+    "BVB3 Bau",
+    "BA Holz",
+    "BA Farbe",
+    "BFSG+1",
+    "BFSG+2",
+    "Sek1"
+  ]
+}

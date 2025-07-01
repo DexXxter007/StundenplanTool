@@ -1,0 +1,447 @@
+[
+  {
+    "name": "Mas",
+    "stunden_gesamt_soll_input": 24,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 24,
+    "stunden_b": 24,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "BO",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "FK Bau",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "FK Farbe",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "Ma",
+        "hauptangebot": false
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#FFD6A5"
+  },
+  {
+    "name": "Die",
+    "stunden_gesamt_soll_input": 16,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 16,
+    "stunden_b": 16,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "BO",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "FK Holz",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "Ma",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "WiSo",
+        "hauptangebot": true
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#FDFFB6"
+  },
+  {
+    "name": "Ton",
+    "stunden_gesamt_soll_input": 15,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 15,
+    "stunden_b": 15,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "Sp",
+        "hauptangebot": true
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#b88c3b"
+  },
+  {
+    "name": "Kwo",
+    "stunden_gesamt_soll_input": 25,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 25,
+    "stunden_b": 25,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "De",
+        "hauptangebot": true
+      },
+      {
+        "angebot": "WP",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "WiSo",
+        "hauptangebot": false
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#FFC6FF"
+  },
+  {
+    "name": "Ant",
+    "stunden_gesamt_soll_input": 0,
+    "stunden_a_input": 0,
+    "stunden_b_input": 16,
+    "stunden_a": 0,
+    "stunden_b": 16,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "FK Farbe",
+        "hauptangebot": true
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di"
+    ],
+    "abwesend_an_tagen": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ],
+    "farbe": "#A0C4FF"
+  },
+  {
+    "name": "Hnk",
+    "stunden_gesamt_soll_input": 16,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 16,
+    "stunden_b": 16,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "BO",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "FK Bau",
+        "hauptangebot": true
+      },
+      {
+        "angebot": "Ma",
+        "hauptangebot": false
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#622A80"
+  },
+  {
+    "name": "Wen",
+    "stunden_gesamt_soll_input": 6,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 6,
+    "stunden_b": 6,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "Sek1",
+        "hauptangebot": true
+      }
+    ],
+    "tage": [
+      "Di"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#D3D3D3"
+  },
+  {
+    "name": "Kpl",
+    "stunden_gesamt_soll_input": 6,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 6,
+    "stunden_b": 6,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "Sek1",
+        "hauptangebot": true
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Do"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#F0E68C"
+  },
+  {
+    "name": "Sta",
+    "stunden_gesamt_soll_input": 24,
+    "stunden_a_input": 0,
+    "stunden_b_input": 0,
+    "stunden_a": 24,
+    "stunden_b": 24,
+    "max_stunden_pro_tag": {
+      "Mo": {
+        "A": 6,
+        "B": 6
+      },
+      "Di": {
+        "A": 6,
+        "B": 6
+      },
+      "Mi": {
+        "A": 6,
+        "B": 6
+      },
+      "Do": {
+        "A": 6,
+        "B": 6
+      },
+      "Fr": {
+        "A": 6,
+        "B": 6
+      }
+    },
+    "angebote": [
+      {
+        "angebot": "BO",
+        "hauptangebot": false
+      },
+      {
+        "angebot": "FK Holz",
+        "hauptangebot": true
+      },
+      {
+        "angebot": "Ma",
+        "hauptangebot": false
+      }
+    ],
+    "tage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ],
+    "abwesend_an_tagen": [],
+    "farbe": "#A0E7A0"
+  }
+]

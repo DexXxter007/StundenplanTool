@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Sport BFSG",
+    "kernangebot": "Sp",
+    "lehrer_namen": [
+      "Ton"
+    ],
+    "dauer_stunden": 4,
+    "woche_typ": "AB",
+    "teilnehmende_klassen_namen": [
+      "BFSG+1",
+      "BFSG+2"
+    ],
+    "id": "sa_45cfe8c7"
+  }
+]

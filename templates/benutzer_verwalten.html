@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>{{ title }}</h1>
+</div>
+
+<!-- Add User Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        Neuen Benutzer anlegen
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('benutzer_save') }}" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="username" class="form-label">Benutzername</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="col-md-3">
+                <label for="email" class="form-label">E-Mail</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="col-md-2">
+                <label for="password" class="form-label">Passwort</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <div class="col-md-2">
+                <label for="role" class="form-label">Rolle</label>
+                <select class="form-select" id="role" name="role">
+                    {% for role in roles %}
+                    <option value="{{ role }}">{{ role }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="farbe" class="form-label">Farbe</label>
+                <select class="form-select" id="farbe" name="farbe">
+                    {% for f in user_farben %}
+                    <option value="{{ f }}" style="background:{{ f }};color:#fff;">{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Erstellen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- User List Table -->
+<div class="card">
+    <div class="card-header">
+        Vorhandene Benutzer
+    </div>
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Benutzername</th>
+                    <th>E-Mail</th>
+                    <th>Rolle</th>
+                    <th>Farbe</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if user.role == 'Admin' %}bg-danger
+                            {% elif user.role == 'Planer' %}bg-warning text-dark
+                            {% else %}bg-secondary
+                            {% endif %}">
+                            {{ user.role }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge" style="background:{{ user.farbe }};color:#fff;">{{ user.farbe }}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary edit-user-btn" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#userEditModal"
+                                data-user-id="{{ user.id }}"
+                                data-username="{{ user.username }}"
+                                data-email="{{ user.email }}"
+                                data-role="{{ user.role }}"
+                                data-farbe="{{ user.farbe }}">
+                            Bearbeiten
+                        </button>
+                        {% if user.id != current_user.id %}
+                        <form action="{{ url_for('benutzer_delete', user_id=user.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie den Benutzer {{ user.username }} löschen möchten?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Löschen</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="userEditModal" tabindex="-1" aria-labelledby="userEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('benutzer_save') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userEditModalLabel">Benutzer bearbeiten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" id="edit_user_id">
+                    <div class="mb-3">
+                        <label for="edit_username" class="form-label">Benutzername</label>
+                        <input type="text" class="form-control" id="edit_username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_email" class="form-label">E-Mail</label>
+                        <input type="email" class="form-control" id="edit_email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_role" class="form-label">Rolle</label>
+                        <select class="form-select" id="edit_role" name="role">
+                            {% for role in roles %}
+                            <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_farbe" class="form-label">Farbe</label>
+                        <select class="form-select" id="edit_farbe" name="farbe">
+                            {% for f in user_farben %}
+                            <option value="{{ f }}" style="background:{{ f }};color:#fff;">{{ f }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_password" class="form-label">Neues Passwort (optional)</label>
+                        <input type="password" class="form-control" id="edit_password" name="password" placeholder="Leer lassen, um nicht zu ändern">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var userEditModal = document.getElementById('userEditModal');
+    if (userEditModal) {
+        userEditModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var userId = button.getAttribute('data-user-id');
+            var username = button.getAttribute('data-username');
+            var email = button.getAttribute('data-email');
+            var role = button.getAttribute('data-role');
+            var farbe = button.getAttribute('data-farbe');
+            userEditModal.querySelector('.modal-title').textContent = 'Benutzer bearbeiten: ' + username;
+            userEditModal.querySelector('#edit_user_id').value = userId;
+            userEditModal.querySelector('#edit_username').value = username;
+            userEditModal.querySelector('#edit_email').value = email;
+            userEditModal.querySelector('#edit_role').value = role;
+            userEditModal.querySelector('#edit_farbe').value = farbe;
+        });
+    }
+});
+</script>
+{% endblock %}

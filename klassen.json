@@ -1,0 +1,329 @@
+[
+  {
+    "klasse": "BVB1 Holz",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Holz",
+        "stunden_gesamt": 8,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Ma",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "A",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  },
+  {
+    "klasse": "BVB2 Farbe",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Farbe",
+        "stunden_gesamt": 8,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Ma",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "A",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  },
+  {
+    "klasse": "BVB3 Bau",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Bau",
+        "stunden_gesamt": 8,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Ma",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "B",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  },
+  {
+    "klasse": "BFSG+1",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "BO",
+        "stunden_gesamt": 10,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "De",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Ma",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WP",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "AB",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ]
+  },
+  {
+    "klasse": "BFSG+2",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "BO",
+        "stunden_gesamt": 10,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "De",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Ma",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 4,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WP",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "AB",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ]
+  },
+  {
+    "klasse": "BA Bau",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Eng",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Bau",
+        "stunden_gesamt": 16,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "A",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  },
+  {
+    "klasse": "BA Holz",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Eng",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Holz",
+        "stunden_gesamt": 16,
+        "stunden_teilung": 8,
+        "lehrer1_name": "Die",
+        "lehrer2_name": "Sta"
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "B",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  },
+  {
+    "klasse": "Sek1",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "Sek1",
+        "stunden_gesamt": 22,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "AB",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr"
+    ]
+  },
+  {
+    "klasse": "BA Farbe",
+    "max_stunden_klasse": 6,
+    "angebote_stunden": [
+      {
+        "angebot": "De",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Eng",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "FK Farbe",
+        "stunden_gesamt": 16,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "Sp",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      },
+      {
+        "angebot": "WiSo",
+        "stunden_gesamt": 2,
+        "stunden_teilung": 0
+      }
+    ],
+    "woche": "B",
+    "arbeitstage": [
+      "Mo",
+      "Di",
+      "Mi",
+      "Do"
+    ]
+  }
+]

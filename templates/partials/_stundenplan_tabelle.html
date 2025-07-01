@@ -1,0 +1,52 @@
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">{{ klasse.name }} (Woche {{ woche }})</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm text-center mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 10%; vertical-align: middle;">Zeit</th>
+                        {% for tag in tage_der_woche %}
+                            <th style="width: 18%;">{{ tag }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in range(zeit_slots|length) %}
+                    <tr>
+                        <td class="fw-bold" style="vertical-align: middle;">
+                            {{ zeit_slots[i].text.split(' ')[0] }}
+                        </td>
+                        {% if zeit_slots[i].typ == 'pause' %}
+                            <td colspan="{{ tage_der_woche|length }}" class="table-light fst-italic" style="vertical-align: middle;">{{ zeit_slots[i].text }}</td>
+                        {% else %}
+                            {% for tag in tage_der_woche %}
+                                {% set eintrag = plan_data_per_tag.get(tag, {}).get(i, {}).get(klasse.name) if plan_data_per_tag is defined else None %}
+                                <td class="plan-cell"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editSlotModal"
+                                    data-woche="{{ woche }}"
+                                    data-klasse-name="{{ klasse.name }}"
+                                    data-tag="{{ tag }}"
+                                    data-slot="{{ i }}"
+                                    style="cursor: pointer; min-width: 120px;">
+                                    {% if eintrag %}
+                                        <div class="p-1 rounded" style="background-color: {{ eintrag.lehrer1.farbe or '#cccccc' }};">
+                                            <strong>{{ eintrag.angebot.name }}</strong><br>
+                                            <small>{{ eintrag.lehrer1.name }}{% if eintrag.lehrer2 %} / {{ eintrag.lehrer2.name }}{% endif %}</small>
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted small p-1">+</div>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

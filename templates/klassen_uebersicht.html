@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Klassen Übersicht</h1>
+
+<div class="mb-3">
+    <button class="btn btn-outline-secondary" onclick="window.print()">Übersicht drucken</button>
+</div>
+
+<div class="accordion" id="klassenAccordion">
+    {% for klasse in klassen_details %}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading-{{ klasse.id }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ klasse.id }}" aria-expanded="false" aria-controls="collapse-{{ klasse.id }}">
+                <div class="d-flex justify-content-between w-100 me-3">
+                    <span>{{ klasse.name }}</span>
+                    <div>
+                        <span class="badge {% if klasse.wochen.A.diff != 0 %}bg-warning text-dark{% else %}bg-light text-dark{% endif %} me-2">
+                            Woche A: {{ '%+d'|format(klasse.wochen.A.diff) }}
+                        </span>
+                        <span class="badge {% if klasse.wochen.B.diff != 0 %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
+                            Woche B: {{ '%+d'|format(klasse.wochen.B.diff) }}
+                        </span>
+                    </div>
+                </div>
+            </button>
+        </h2>
+        <div id="collapse-{{ klasse.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ klasse.id }}" data-bs-parent="#klassenAccordion">
+            <div class="accordion-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Wochenübersicht (Gesamt)</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Woche</th>
+                                    <th>Soll</th>
+                                    <th>Ist</th>
+                                    <th>Diff.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for woche, w_details in klasse.wochen.items()|sort if woche in ['A', 'B'] %}
+                                <tr>
+                                    <td><strong>{{ woche }}</strong></td>
+                                    <td>{{ w_details.soll }}</td>
+                                    <td>{{ w_details.ist }}</td>
+                                    <td class="fw-bold {% if w_details.diff > 0 %}text-danger{% elif w_details.diff < 0 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ '%+d'|format(w_details.diff) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-8">
+                        <h6>Angebotsdetails</h6>
+                        <table class="table table-sm table-bordered table-responsive">
+                            <thead class="table-light">
+                                <tr>
+                                    <th rowspan="2" class="align-middle">Angebot</th>
+                                    <th rowspan="2" class="align-middle">Lehrer</th>
+                                    <th colspan="3" class="text-center">Woche A</th>
+                                    <th colspan="3" class="text-center">Woche B</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-center">Soll</th><th class="text-center">Ist</th><th class="text-center">Diff</th>
+                                    <th class="text-center">Soll</th><th class="text-center">Ist</th><th class="text-center">Diff</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for angebot in klasse.angebote %}
+                                <tr>
+                                    <td>{{ angebot.name }}</td>
+                                    <td>{{ angebot.lehrer|join(', ') if angebot.lehrer else '-' }}</td>
+                                    <td class="text-center">{{ angebot.wochen.A.soll }}</td>
+                                    <td class="text-center">{{ angebot.wochen.A.ist }}</td>
+                                    <td class="text-center fw-bold {% if angebot.wochen.A.diff != 0 %}text-warning text-dark{% else %}text-success{% endif %}">{{ '%+d'|format(angebot.wochen.A.diff) }}</td>
+                                    <td class="text-center">{{ angebot.wochen.B.soll }}</td>
+                                    <td class="text-center">{{ angebot.wochen.B.ist }}</td>
+                                    <td class="text-center fw-bold {% if angebot.wochen.B.diff != 0 %}text-warning text-dark{% else %}text-success{% endif %}">{{ '%+d'|format(angebot.wochen.B.diff) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="8" class="text-center text-muted">Keine Angebote für diese Klasse geplant.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+@media print {
+    /* 1. Verstecke alle nicht benötigten Seitenelemente */
+    nav, .mb-3, h1, .accordion-button::after /* Pfeil-Icon ausblenden */ {
+        display: none !important;
+    }
+
+    /* 2. Den interaktiven Button in eine saubere Seitenüberschrift umwandeln */
+    .accordion-button {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0 1rem 0 !important; /* Abstand unter der Überschrift */
+        font-size: 1.5rem !important;   /* Größere Schrift für die Überschrift */
+        color: black !important;
+        border-radius: 0 !important;
+        pointer-events: none; /* Klick-Effekte deaktivieren */
+    }
+
+    /* 3. Sicherstellen, dass die farbigen Warnungen (Badges, Text) gedruckt werden */
+    .badge, .text-danger, .text-warning, .text-success {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .badge {
+        border: 1px solid #ccc !important; /* Bessere Sichtbarkeit für helle Badges */
+    }
+
+    /* 4. Die eingeklappten Inhalte (Tabellen) sichtbar machen */
+    .accordion-collapse {
+        display: block !important;
+        height: auto !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* 5. Jede Klasse auf eine neue Seite umbrechen und Ränder entfernen */
+    .accordion-item {
+        page-break-after: always;
+        break-after: page;
+        border: none !important; /* Rahmen des Accordion-Elements entfernen */
+    }
+}
+</style>
+{% endblock %}

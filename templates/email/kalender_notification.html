@@ -1,0 +1,12 @@
+<p>Hallo,</p>
+<p>
+    Ein neuer Kalendereintrag wurde von <strong>{{ creator.username }}</strong> erstellt:
+</p>
+<ul>
+    <li><strong>Titel:</strong> {{ event.title }}</li>
+    <li><strong>Start:</strong> {{ event.start.strftime('%d.%m.%Y %H:%M') }}</li>
+    {% if event.end %}
+    <li><strong>Ende:</strong> {{ event.end.strftime('%d.%m.%Y %H:%M') }}</li>
+    {% endif %}
+</ul>
+<p>Viele Grüße,<br>Ihr Stundentool</p>

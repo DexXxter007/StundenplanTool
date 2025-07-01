@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Lehrer Übersicht</h1>
+
+<div class="mb-3">
+    <button class="btn btn-outline-secondary" onclick="window.print()">Übersicht drucken</button>
+</div>
+
+<div class="accordion" id="lehrerAccordion">
+    {% for lehrer in lehrer_details %}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading-{{ lehrer.id }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ lehrer.id }}" aria-expanded="false" aria-controls="collapse-{{ lehrer.id }}">
+                <div class="d-flex justify-content-between w-100 me-3">
+                    <span>{{ lehrer.name }}</span>
+                    <span class="fw-bold {% if lehrer.gesamt_diff > 0 %}text-danger{% elif lehrer.gesamt_diff < 0 %}text-warning{% else %}text-success{% endif %}">
+                        Gesamtdifferenz: {{ '%+d'|format(lehrer.gesamt_diff) }}
+                    </span>
+                </div>
+            </button>
+        </h2>
+        <div id="collapse-{{ lehrer.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ lehrer.id }}" data-bs-parent="#lehrerAccordion">
+            <div class="accordion-body">
+                <div class="row">
+                    <div class="col-md-5">
+                        <h6>Wochenübersicht</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Woche</th>
+                                    <th>Soll</th>
+                                    <th>Ist</th>
+                                    <th>Diff.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for woche, w_details in lehrer.wochen.items()|sort if woche in ['A', 'B'] %}
+                                <tr>
+                                    <td><strong>{{ woche }}</strong></td>
+                                    <td>{{ w_details.soll }}</td>
+                                    <td>{{ w_details.ist }}</td>
+                                    {% set w_diff = w_details.ist - w_details.soll %}
+                                    <td class="fw-bold {% if w_diff > 0 %}text-danger{% elif w_diff < 0 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ '%+d'|format(w_diff) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-7">
+                        <h6>Einsatzdetails</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Woche</th>
+                                    <th>Klasse/Angebot</th>
+                                    <th>Stunden</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set has_einsaetze = false %}
+                                {% for woche, w_details in lehrer.wochen.items()|sort if woche in ['A', 'B'] %}
+                                    {% if w_details.einsaetze %}
+                                        {% for einsatz in w_details.einsaetze %}
+                                            {% set has_einsaetze = true %}
+                                            <tr>
+                                                <td>{{ woche }}</td>
+                                                <td>{{ einsatz.name }}</td>
+                                                <td>{{ einsatz.stunden }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not has_einsaetze %}
+                                    <tr><td colspan="3" class="text-center text-muted">Keine Einsätze geplant.</td></tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+@media print {
+    /* 1. Verstecke alle nicht benötigten Seitenelemente */
+    nav, .mb-3, h1, .accordion-button::after /* Pfeil-Icon ausblenden */ {
+        display: none !important;
+    }
+
+    /* 2. Den interaktiven Button in eine saubere Seitenüberschrift umwandeln */
+    .accordion-button {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0 1rem 0 !important; /* Abstand unter der Überschrift */
+        font-size: 1.5rem !important;   /* Größere Schrift für die Überschrift */
+        color: black !important;
+        border-radius: 0 !important;
+        pointer-events: none; /* Klick-Effekte deaktivieren */
+    }
+
+    /* 3. Sicherstellen, dass die farbigen Warnungen (Stundendifferenz) gedruckt werden */
+    .text-danger, .text-warning, .text-success {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 4. Die eingeklappten Inhalte (Tabellen) sichtbar machen */
+    .accordion-collapse {
+        display: block !important;
+        height: auto !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* 5. Jeden Lehrer auf eine neue Seite umbrechen und Ränder entfernen */
+    .accordion-item {
+        page-break-after: always;
+        break-after: page;
+        border: none !important; /* Rahmen des Accordion-Elements entfernen */
+    }
+}
+</style>
+{% endblock %}

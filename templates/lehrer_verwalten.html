@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<style>
+    .color-option {
+        display: flex;
+        align-items: center;
+    }
+    .color-box {
+        width: 1em;
+        height: 1em;
+        border: 1px solid #ccc;
+        margin-right: 0.5em;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Lehrer verwalten</h1>
+</div>
+
+<!-- Add Teacher Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        Neuen Lehrer hinzufügen
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('lehrer_save') }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="stunden_gesamt_soll_input" class="form-label">Soll (Gesamt)</label>
+                    <input type="text" class="form-control" name="stunden_gesamt_soll_input" placeholder="z.B. 24">
+                </div>
+                <div class="col-md-2">
+                    <label for="stunden_a_input" class="form-label">Soll (Woche A)</label>
+                    <input type="text" class="form-control" name="stunden_a_input" placeholder="Optional">
+                </div>
+                <div class="col-md-2">
+                    <label for="stunden_b_input" class="form-label">Soll (Woche B)</label>
+                    <input type="text" class="form-control" name="stunden_b_input" placeholder="Optional">
+                </div>
+                <div class="col-md-2">
+                    <label for="max_stunden_pro_tag" class="form-label">Max. Std./Tag</label>
+                    <input type="number" class="form-control" name="max_stunden_pro_tag" value="8">
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <label for="farbe" class="form-label">Farbe</label>
+                    <select class="form-select" name="farbe">
+                        {% for farbe_name, farbe_code in LEHRER_FARBEN_MAP.items() %}
+                        <option value="{{ farbe_name }}" data-color="{{ farbe_code }}">{{ farbe_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Verfügbare Tage</label>
+                    <div>
+                        {% for tag in tage_der_woche %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="tage" value="{{ tag }}" id="tag_{{ tag }}" checked>
+                            <label class="form-check-label" for="tag_{{ tag }}">{{ tag }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <label class="form-label">Angebote</label>
+                    <div class="d-flex flex-wrap">
+                        {% for angebot in alle_angebote %}
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" name="angebote" value="{{ angebot.id }}" id="angebot_{{ angebot.id }}">
+                            <label class="form-check-label" for="angebot_{{ angebot.id }}">{{ angebot.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <!-- NEU: Klassen-Auswahl für Lehrer -->
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <label class="form-label">Einsatz in Klassen (leer = alle Klassen)</label>
+                    <div class="d-flex flex-wrap">
+                        {% for klasse in klassen_liste %}
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" name="einsatz_klassen" value="{{ klasse.id }}" id="einsatz_klasse_{{ klasse.id }}">
+                            <label class="form-check-label" for="einsatz_klasse_{{ klasse.id }}">{{ klasse.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="hauptangebot" class="form-label">Hauptangebot</label>
+                <select class="form-select" id="hauptangebot" name="hauptangebot">
+                    <option value="">Bitte wählen</option>
+                    {% for angebot in alle_angebote %}
+                        <option value="{{ angebot.id }}"
+                            {% if lehrer and lehrer.hauptangebot_id == angebot.id %}selected{% endif %}>
+                            {{ angebot.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Lehrer hinzufügen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Teacher List Table -->
+<div class="card">
+    <div class="card-header">Vorhandene Lehrer</div>
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Einsatz in Klassen</th>
+                    <th>Hauptfach</th>
+                    <th>Angebote</th>
+                    <th>Soll A</th>
+                    <th>Soll B</th>
+                    <th>Farbe</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lehrer in lehrer_liste %}
+                <tr>
+                    <td style="background: {{ lehrer.farbe }}; color: #000; font-weight: bold;">
+                        {{ lehrer.name }}
+                    </td>
+                    <td>
+                        {% set einsatz_namen = lehrer_einsatz_klassen[lehrer.id] %}
+                        {% if einsatz_namen and einsatz_namen|length > 0 %}
+                            {{ einsatz_namen|join(', ') }}
+                        {% else %}
+                            <span class="text-muted">alle Klassen</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ lehrer_hauptangebot[lehrer.id] }}
+                    </td>
+                    <td>{{ lehrer.angebote|map(attribute='name')|join(', ') }}</td>
+                    <td>{{ lehrer.stunden_a }}</td>
+                    <td>{{ lehrer.stunden_b }}</td>
+                    <td>
+                        <span style="background: {{ lehrer.farbe }}; display: inline-block; width: 24px; height: 16px; border: 1px solid #888; vertical-align: middle;"></span>
+                        <span style="font-size: 10px;">{{ lehrer.farbe }}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editLehrerModal"
+                                data-lehrer-id="{{ lehrer.id }}"
+                                data-name="{{ lehrer.name }}"
+                                data-stunden-gesamt-soll-input="{{ lehrer.stunden_gesamt_soll_input }}"
+                                data-stunden-a-input="{{ lehrer.stunden_a_input }}"
+                                data-stunden-b-input="{{ lehrer.stunden_b_input }}"
+                                data-max-stunden='{{ lehrer.max_stunden_pro_tag.get("Mo", {}).get("A", 8) }}'
+                                data-farbe-name="{{ farben_reverse_map.get(lehrer.farbe, DEFAULT_LEHRER_FARBE_NAME) }}"
+                                data-tage='{{ lehrer.tage|tojson|safe }}'
+                                data-angebote='{{ lehrer.angebote|map(attribute="id")|list|tojson|safe }}'
+                                data-hauptangebot-id="{{ lehrer_hauptangebot_id[lehrer.id] if lehrer_hauptangebot_id[lehrer.id] is not none else '' }}">
+                            Bearbeiten
+                        </button>
+                        <form action="{{ url_for('lehrer_delete', lehrer_id=lehrer.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie den Lehrer {{ lehrer.name }} löschen möchten?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Löschen</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Teacher Modal -->
+<div class="modal fade" id="editLehrerModal" tabindex="-1" aria-labelledby="editLehrerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('lehrer_save') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editLehrerModalLabel">Lehrer bearbeiten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="lehrer_id" id="edit_lehrer_id">
+                    <!-- Form fields are identical to the add form, just with 'edit_' prefix for IDs -->
+                    <div class="row g-3">
+                        <div class="col-md-4"><label for="edit_name" class="form-label">Name</label><input type="text" class="form-control" id="edit_name" name="name" required></div>
+                        <div class="col-md-2"><label for="edit_stunden_gesamt_soll_input" class="form-label">Soll (Gesamt)</label><input type="text" class="form-control" id="edit_stunden_gesamt_soll_input" name="stunden_gesamt_soll_input"></div>
+                        <div class="col-md-2"><label for="edit_stunden_a_input" class="form-label">Soll (Woche A)</label><input type="text" class="form-control" id="edit_stunden_a_input" name="stunden_a_input"></div>
+                        <div class="col-md-2"><label for="edit_stunden_b_input" class="form-label">Soll (Woche B)</label><input type="text" class="form-control" id="edit_stunden_b_input" name="stunden_b_input"></div>
+                        <div class="col-md-2"><label for="edit_max_stunden_pro_tag" class="form-label">Max. Std./Tag</label><input type="number" class="form-control" id="edit_max_stunden_pro_tag" name="max_stunden_pro_tag"></div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4"><label for="edit_farbe" class="form-label">Farbe</label><select class="form-select" id="edit_farbe" name="farbe">{% for farbe_name, farbe_code in LEHRER_FARBEN_MAP.items() %}<option value="{{ farbe_name }}" data-color="{{ farbe_code }}">{{ farbe_name }}</option>{% endfor %}</select></div>
+                        <div class="col-md-8"><label class="form-label">Verfügbare Tage</label><div>{% for tag in tage_der_woche %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="tage" value="{{ tag }}" id="edit_tag_{{ tag }}"><label class="form-check-label" for="edit_tag_{{ tag }}">{{ tag }}</label></div>{% endfor %}</div></div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-12"><label class="form-label">Angebote</label><div class="d-flex flex-wrap">{% for angebot in alle_angebote %}<div class="form-check me-3"><input class="form-check-input" type="checkbox" name="angebote" value="{{ angebot.id }}" id="edit_angebot_{{ angebot.id }}"><label class="form-check-label" for="edit_angebot_{{ angebot.id }}">{{ angebot.name }}</label></div>{% endfor %}</div></div>
+                    </div>
+                    <!-- NEU: Klassen-Auswahl im Modal -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-12">
+                            <label class="form-label">Einsatz in Klassen (leer = alle Klassen)</label>
+                            <div class="d-flex flex-wrap">
+                                {% for klasse in klassen_liste %}
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" name="einsatz_klassen" value="{{ klasse.id }}" id="edit_einsatz_klasse_{{ klasse.id }}">
+                                    <label class="form-check-label" for="edit_einsatz_klasse_{{ klasse.id }}">{{ klasse.name }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_hauptangebot" class="form-label">Hauptangebot</label>
+                        <select class="form-select" id="edit_hauptangebot" name="hauptangebot">
+                            <option value="">Bitte wählen</option>
+                            {% for angebot in alle_angebote %}
+                                <option value="{{ angebot.id }}"
+                                    {% if lehrer and lehrer.hauptangebot_id == angebot.id %}selected{% endif %}>
+                                    {{ angebot.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Colorize Dropdowns ---
+    function colorizeSelect(selectElement) {
+        Array.from(selectElement.options).forEach(function(option) {
+            const color = option.getAttribute('data-color');
+            if (color) {
+                option.style.backgroundColor = color;
+                // Simple check for light/dark color to adjust text color
+                const hex = color.replace('#', '');
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                option.style.color = brightness > 128 ? 'black' : 'white';
+            }
+        });
+    }
+    document.querySelectorAll('select[name="farbe"]').forEach(colorizeSelect);
+
+    // --- Edit Modal Logic ---
+    var editModal = document.getElementById('editLehrerModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            
+            // Populate simple fields
+            editModal.querySelector('#edit_lehrer_id').value = button.dataset.lehrerId;
+            editModal.querySelector('#edit_name').value = button.dataset.name;
+            editModal.querySelector('#edit_stunden_gesamt_soll_input').value = button.dataset.stundenGesamtSollInput;
+            editModal.querySelector('#edit_stunden_a_input').value = button.dataset.stundenAInput;
+            editModal.querySelector('#edit_stunden_b_input').value = button.dataset.stundenBInput;
+            editModal.querySelector('#edit_max_stunden_pro_tag').value = button.dataset.maxStunden;
+            editModal.querySelector('#edit_farbe').value = button.dataset.farbeName;
+
+            // Populate checkboxes for 'tage'
+            var tage = JSON.parse(button.dataset.tage);
+            editModal.querySelectorAll('input[name="tage"]').forEach(function(checkbox) {
+                checkbox.checked = tage.includes(checkbox.value);
+            });
+
+            // Populate checkboxes for 'angebote'
+            var angebote = JSON.parse(button.dataset.angebote);
+            editModal.querySelectorAll('input[name="angebote"]').forEach(function(checkbox) {
+                checkbox.checked = angebote.includes(parseInt(checkbox.value));
+            });
+
+            // NEU: Einsatzklassen-Checkboxen setzen
+            var einsatzKlassen = [];
+            if (button.dataset.einsatzKlassen) {
+                einsatzKlassen = JSON.parse(button.dataset.einsatzKlassen);
+            }
+            editModal.querySelectorAll('input[name="einsatz_klassen"]').forEach(function(checkbox) {
+                checkbox.checked = einsatzKlassen.includes(parseInt(checkbox.value));
+            });
+
+            // Populate Hauptangebot
+            editModal.querySelector('#edit_hauptangebot').value = button.dataset.hauptangebotId || "";
+        });
+    }
+});
+</script>
+{% endblock %}

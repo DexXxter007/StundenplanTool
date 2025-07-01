@@ -1,0 +1,188 @@
+{% macro text_color(bg) -%}
+  {%- set dark_colors = ['#1f77b4', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#6c757d', '#3788d8'] %}
+  {%- if bg and (bg|lower in dark_colors or bg|lower in ['#000', '#000000']) %}
+    color: #fff;
+  {%- else %}
+    color: #222;
+  {%- endif %}
+{%- endmacro %}
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="mb-3 d-flex align-items-center">
+  <a href="{{ url_for('stundenplan_anzeigen', woche='A') }}" class="btn btn-outline-primary {% if woche == 'A' %}active{% endif %} me-2">Woche A</a>
+  <a href="{{ url_for('stundenplan_anzeigen', woche='B') }}" class="btn btn-outline-primary {% if woche == 'B' %}active{% endif %}">Woche B</a>
+  <button type="button" class="btn btn-outline-secondary ms-auto" onclick="window.print()">Drucken</button>
+</div>
+
+<!-- Header, der nur beim Drucken sichtbar ist -->
+<div class="print-header" style="display: none;">
+  <h2>Stundenplan - Woche {{ woche }}</h2>
+</div>
+
+<div class="stundenplan-tables">
+  {% if geordnete_klassen|length == 0 %}
+    <div class="alert alert-danger">Keine Klassen für diese Woche gefunden.</div>
+  {% endif %}
+  {% if zeit_slots|length == 0 %}
+    <div class="alert alert-danger">Keine Zeit-Slots gefunden.</div>
+  {% endif %}
+  {% for tag in tage_der_woche %}
+  <div class="druck-seite">
+    <h3>{{ tag }}</h3>
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>Uhrzeit</th>
+            {% for klasse in geordnete_klassen %}
+              <th>{{ klasse.name }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for slot in zeit_slots %}
+            {% set slot_idx = loop.index0 %}
+            <tr>
+              <td>
+                {{ slot.text }}
+              </td>
+              {% for klasse in geordnete_klassen %}
+                {% set tag_data = plan_data_per_tag[tag] if plan_data_per_tag[tag] is defined else None %}
+                {% set slot_data = tag_data[slot_idx] if tag_data and (slot_idx in tag_data) else None %}
+                {% set eintrag = slot_data[klasse.name] if slot_data and (klasse.name in slot_data) else None %}
+                {# Farben für Lehrer 1 und 2: erst aus Eintrag, dann aus alle_lehrer, sonst grau #}
+                {% set lehrer1farbe = eintrag.lehrer1.farbe if eintrag and eintrag.lehrer1 and eintrag.lehrer1.farbe else None %}
+                {% if not lehrer1farbe and eintrag and eintrag.lehrer1 %}
+                  {% set l1 = (alle_lehrer | selectattr('id', 'equalto', eintrag.lehrer1.id) | list | first) %}
+                  {% if l1 and l1.farbe %}{% set lehrer1farbe = l1.farbe %}{% endif %}
+                {% endif %}
+                {% set lehrer2farbe = None %}
+                {% if eintrag and eintrag.lehrer2 %}
+                  {% set l2 = (alle_lehrer | selectattr('id', 'equalto', eintrag.lehrer2.id) | list | first) %}
+                  {% if l2 and l2.farbe %}{% set lehrer2farbe = l2.farbe %}{% elif eintrag.lehrer2.farbe %}{% set lehrer2farbe = eintrag.lehrer2.farbe %}{% endif %}
+                {% endif %}
+                <td class="plan-cell"
+                    style="background: none; min-width: 120px; max-width: 160px; padding: 0; vertical-align: middle; text-align: center;">
+                  {% if eintrag and eintrag.lehrer1 and eintrag.lehrer2 %}
+                    <div style="position: relative; width: 100%; height: 60px; min-height: 60px; max-height: 80px; overflow: hidden;">
+                      <svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;">
+                        <rect x="0" y="0" width="50" height="60" fill="{{ lehrer1farbe or '#cccccc' }}" />
+                        <rect x="50" y="0" width="50" height="60" fill="{{ lehrer2farbe or '#cccccc' }}" />
+                      </svg>
+                      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: flex; flex-direction: column; justify-content: center; align-items: stretch;">
+                        <div style="display: flex; flex-direction: row; width: 100%;">
+                          <div style="width: 50%; display: flex; justify-content: flex-start; align-items: center; padding-left: 2px;">
+                            <span class="badge" style="background:{{ lehrer1farbe or '#cccccc' }};{{ text_color(lehrer1farbe or '#cccccc') }}">{{ eintrag.lehrer1.name }}</span>
+                          </div>
+                          <div style="width: 50%; display: flex; justify-content: flex-end; align-items: center; padding-right: 2px;">
+                            <span class="badge" style="background:{{ lehrer2farbe or '#cccccc' }};{{ text_color(lehrer2farbe or '#cccccc') }}">{{ eintrag.lehrer2.name }}</span>
+                          </div>
+                        </div>
+                        <div style="width: 100%; text-align: center; margin-top: 2px;">
+                          <span style="background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; font-size: 0.95em; {{ text_color(eintrag.lehrer1.farbe) }}">{{ eintrag.angebot.name }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  {% elif eintrag and eintrag.lehrer1 %}
+                    <div style="background: {{ eintrag.lehrer1.farbe }}; {{ text_color(eintrag.lehrer1.farbe) }}; padding: 2px; min-height: 60px; max-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                      <span class="badge" style="background:{{ eintrag.lehrer1.farbe }};{{ text_color(eintrag.lehrer1.farbe) }}">{{ eintrag.lehrer1.name }}</span>
+                      <span style="{{ text_color(eintrag.lehrer1.farbe) }}">{{ eintrag.angebot.name }}</span>
+                    </div>
+                  {% else %}
+                    <div style="min-height: 60px; max-height: 80px; display: flex; align-items: center; justify-content: center;">
+                      <span class="text-muted">+</span>
+                    </div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+@media print {
+    /* Seite im Querformat mit Rändern definieren */
+    @page {
+        size: landscape;
+        margin: 0.7cm; /* Ränder etwas verkleinert */
+    }
+
+    /* 1. Alle nicht für den Druck bestimmten Elemente ausblenden */
+    nav, .container > h1, .container > .mb-3, .alert {
+        display: none !important;
+    }
+
+    /* Header für den Druck anzeigen und stylen */
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 0.5rem; /* Weniger Abstand */
+        font-size: 1.2rem;
+    }
+
+    /* 2. Drucklayout für den Body optimieren */
+    body, .container {
+        background: white !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+    }
+
+    /* 3. Hauptcontainer für das 2-Spalten-Grid-Layout */
+    .stundenplan-tables {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 8px; /* Abstand verkleinert */
+        height: auto !important;
+    }
+
+    /* 4. KEINE Seitenumbrüche mehr, Grid regelt das Layout */
+    .druck-seite {
+        page-break-inside: avoid !important;
+    }
+
+    /* 5. Tabellen im Grid positionieren (3 links, 2 rechts) */
+    .druck-seite:nth-child(1) { grid-area: 1 / 1 / 2 / 2; } /* Montag */
+    .druck-seite:nth-child(2) { grid-area: 2 / 1 / 3 / 2; } /* Dienstag */
+    .druck-seite:nth-child(3) { grid-area: 3 / 1 / 4 / 2; } /* Mittwoch */
+    .druck-seite:nth-child(4) { grid-area: 1 / 2 / 2 / 3; } /* Donnerstag */
+    .druck-seite:nth-child(5) { grid-area: 2 / 2 / 3 / 3; } /* Freitag */
+
+    /* 6. Erzwinge das Drucken von Hintergrundfarben */
+    .plan-cell div, .plan-cell svg rect, .badge {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 7. Bootstrap-Override: Hintergrund der Zellen transparent machen */
+    .table td, .table th, .plan-cell {
+        background-color: transparent !important;
+    }
+
+    /* 8. Schriftgrößen und Abstände für den Druck anpassen, um Platz zu sparen */
+    .table, .table th, .table td, .badge, span { font-size: 0.65rem !important; }
+    h3 { font-size: 0.8rem !important; margin-bottom: 0.2rem !important; }
+    .table-sm th, .table-sm td { padding: 0.1rem !important; }
+
+    /* 9. Höhe der Zellen reduzieren, um alles auf eine Seite zu bekommen */
+    .plan-cell, .plan-cell > div, .plan-cell svg {
+        min-height: 48px !important;
+        height: 48px !important;
+        max-height: 48px !important;
+    }
+}
+</style>
+{% endblock %}

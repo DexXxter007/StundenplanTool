@@ -1,0 +1,46 @@
+[
+  {
+    "name": "BO",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "De",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "Eng",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "FK Bau",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "FK Farbe",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "FK Holz",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "Ma",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "Sek1",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "Sp",
+    "nur_ein_doppelblock_pro_tag": true
+  },
+  {
+    "name": "WiSo",
+    "nur_ein_doppelblock_pro_tag": false
+  },
+  {
+    "name": "WP",
+    "nur_ein_doppelblock_pro_tag": false
+  }
+]

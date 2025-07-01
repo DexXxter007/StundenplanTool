@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Einstellungen</h1>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Allgemeine Einstellungen
+        </div>
+        <div class="card-body">
+            <form id="einstellungen-form" method="POST" action="{{ url_for('einstellungen_save') }}">
+                <div class="mb-3">
+                    <label for="zeiten_eingabe" class="form-label">Unterrichtszeiten (pro Zeile eine Zeit, z.B. '08:00-08:45)</label>
+                    <textarea class="form-control" id="zeiten_eingabe" name="zeiten_eingabe" rows="8">{{ zeiten_text }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reihenfolge der Klassen (Woche A)</label>
+                    <div id="klassen_reihenfolge_a_list" class="list-group">
+                        <!-- Items werden von JS generiert -->
+                    </div>
+                    <input type="hidden" id="klassen_reihenfolge_a_hidden" name="klassen_reihenfolge_a">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reihenfolge der Klassen (Woche B)</label>
+                    <div id="klassen_reihenfolge_b_list" class="list-group">
+                        <!-- Items werden von JS generiert -->
+                    </div>
+                    <input type="hidden" id="klassen_reihenfolge_b_hidden" name="klassen_reihenfolge_b">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Stunden pro Tag</div>
+        <div class="card-body">
+            <p class="card-text">Legen Sie fest, wie viele Unterrichtsstunden pro Tag maximal für eine Klasse zur Verfügung stehen.</p>
+            <div class="row" form="einstellungen-form">
+                {% for tag in tage_der_woche %}
+                <div class="col">
+                    <label for="stunden_{{ tag.lower() }}" class="form-label">{{ tag }}</label>
+                    <input type="number" class="form-control" id="stunden_{{ tag.lower() }}" name="stunden_{{ tag.lower() }}" value="{{ stunden_pro_tag.get(tag, 6) }}" min="0" max="8">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Angebote verwalten
+        </div>
+        <div class="card-body">
+            <!-- Formular für neue Angebote -->
+            <form method="POST" action="{{ url_for('angebot_save') }}" class="row g-3 align-items-start" id="angebot_add_form">
+                <input type="hidden" id="angebot_id" name="angebot_id" value="">
+                <div class="col-md-4">
+                    <label for="angebot_name" class="form-label">Angebotsname</label>
+                    <input type="text" class="form-control" id="angebot_name" name="name" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Blockgröße</label>
+                    <div class="pt-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="block_groesse" id="block_groesse_2" value="2" checked>
+                            <label class="form-check-label" for="block_groesse_2">Doppel</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="block_groesse" id="block_groesse_1" value="1">
+                            <label class="form-check-label" for="block_groesse_1">Einzel</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="nur_ein_doppelblock" name="nur_ein_doppelblock">
+                        <label class="form-check-label" for="nur_ein_doppelblock">
+                            Nur ein Doppelblock pro Tag
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-2 align-self-end">
+                    <button type="submit" class="btn btn-primary w-100" id="angebot_submit_btn">Hinzufügen</button>
+                </div>
+            </form>
+
+            <!-- Modal für Angebots-Bearbeitung -->
+            <div class="modal fade" id="angebotEditModal" tabindex="-1" aria-labelledby="angebotEditModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <form method="POST" action="{{ url_for('angebot_save') }}" id="angebot_edit_form">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="angebotEditModalLabel">Angebot bearbeiten</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="edit_angebot_id" name="angebot_id" value="">
+                        <div class="mb-3">
+                            <label for="edit_angebot_name" class="form-label">Angebotsname</label>
+                            <input type="text" class="form-control" id="edit_angebot_name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Blockgröße</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="block_groesse" id="edit_block_groesse_2" value="2">
+                                    <label class="form-check-label" for="edit_block_groesse_2">Doppel</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="block_groesse" id="edit_block_groesse_1" value="1">
+                                    <label class="form-check-label" for="edit_block_groesse_1">Einzel</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_nur_ein_doppelblock" name="nur_ein_doppelblock">
+                                <label class="form-check-label" for="edit_nur_ein_doppelblock">
+                                    Nur ein Doppelblock pro Tag
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                      <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <h5>Vorhandene Angebote</h5>
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Blockgröße</th>
+                        <th>Nur 1 Doppelblock/Tag</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for angebot in alle_angebote %}
+                    <tr>
+                        <td>{{ angebot.name }}</td>
+                        <td>{{ 'Doppel' if angebot.block_groesse == 2 else 'Einzel' }}</td>
+                        <td>{% if angebot.nur_ein_doppelblock_pro_tag %}Ja{% else %}Nein{% endif %}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="openEditAngebotModal('{{ angebot.id }}', '{{ angebot.name|escape }}', '{{ angebot.block_groesse }}', {{ 'true' if angebot.nur_ein_doppelblock_pro_tag else 'false' }})">✏️ Bearbeiten</button>
+                            <form action="{{ url_for('angebot_delete', angebot_id=angebot.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie {{ angebot.name }} löschen möchten?');">
+                                <button type="submit" class="btn btn-sm btn-danger">🗑️ Löschen</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center">Noch keine Angebote angelegt.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Datenexport
+        </div>
+        <div class="card-body">
+            <p>Exportieren Sie alle Ihre Daten in eine Excel-Datei.</p>
+            <form method="POST" action="{{ url_for('excel_export') }}">
+                <button type="submit" class="btn btn-info">📊 Excel Export</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="my-4">
+        <button type="submit" form="einstellungen-form" class="btn btn-primary btn-lg">Alle Einstellungen speichern</button>
+    </div>
+
+    <script>
+    function loadAngebotForEdit(button, id, name, blockGroesse, nurEinDoppelblock) {
+        document.getElementById('angebot_id').value = id;
+        const nameInput = document.getElementById('angebot_name');
+        nameInput.value = name;
+        nameInput.dataset.originalValue = name; // Store the original name for comparison
+        document.querySelector(`input[name="block_groesse"][value="${blockGroesse}"]`).checked = true;
+        document.getElementById('nur_ein_doppelblock').checked = nurEinDoppelblock;
+        document.getElementById('angebot_submit_btn').textContent = 'Änderungen speichern';
+    }
+
+    // Reset form when adding a new offer after editing (only if the name changes)
+    document.getElementById('angebot_name').addEventListener('input', function() {
+        const idInput = document.getElementById('angebot_id');
+        const submitButton = document.getElementById('angebot_submit_btn');
+        if (idInput.value !== '' && this.value !== this.dataset.originalValue) {
+            submitButton.textContent = 'Hinzufügen';
+        } else if (idInput.value !== '' && this.value === this.dataset.originalValue) {
+            submitButton.textContent = 'Änderungen speichern';
+        }
+    });
+
+
+    // --- JavaScript für die Sortierung der Klassenreihenfolge ---
+
+    // Globale Zustandsvariablen
+    let currentOrderA = [];
+    let currentOrderB = [];
+
+    // Hauptfunktion zum Rendern einer Liste (A oder B)
+    function renderList(week) {
+        const order = week === 'a' ? currentOrderA : currentOrderB;
+        const listContainer = document.getElementById(`klassen_reihenfolge_${week}_list`);
+        const hiddenInput = document.getElementById(`klassen_reihenfolge_${week}_hidden`);
+
+        // 1. Aktuellen Inhalt leeren
+        listContainer.innerHTML = '';
+
+        // 2. Sortierbare Liste füllen
+        if (order.length === 0) {
+            listContainer.innerHTML = '<div class="list-group-item text-muted">Noch keine Klassen in dieser Reihenfolge.</div>';
+        } else {
+            order.forEach((className, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.innerHTML = `
+                    <span>${className}</span>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" onclick="moveItem('${className}', 'up', '${week}')" ${index === 0 ? 'disabled' : ''}>&#9650;</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="moveItem('${className}', 'down', '${week}')" ${index === order.length - 1 ? 'disabled' : ''}>&#9660;</button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        // 3. Verstecktes Input-Feld für das Formular aktualisieren
+        hiddenInput.value = order.join(',');
+    }
+
+    // Funktionen zur Manipulation der Reihenfolge
+    function removeItem(className, week) {
+        const order = week === 'a' ? currentOrderA : currentOrderB;
+        const index = order.indexOf(className);
+        if (index > -1) {
+            order.splice(index, 1);
+        }
+        renderList(week);
+    }
+
+    function moveItem(className, direction, week) {
+        const order = week === 'a' ? currentOrderA : currentOrderB;
+        const index = order.indexOf(className);
+
+        if (direction === 'up' && index > 0) {
+            [order[index], order[index - 1]] = [order[index - 1], order[index]]; // Elemente tauschen
+        } else if (direction === 'down' && index < order.length - 1) {
+            [order[index], order[index + 1]] = [order[index + 1], order[index]]; // Elemente tauschen
+        }
+        renderList(week);
+    }
+
+    // Modal-Öffnen und Formular-Befüllen für Angebots-Bearbeitung
+    function openEditAngebotModal(id, name, blockGroesse, nurEinDoppelblock) {
+        document.getElementById('edit_angebot_id').value = id;
+        document.getElementById('edit_angebot_name').value = name;
+        document.getElementById('edit_block_groesse_2').checked = blockGroesse == "2";
+        document.getElementById('edit_block_groesse_1').checked = blockGroesse == "1";
+        document.getElementById('edit_nur_ein_doppelblock').checked = nurEinDoppelblock;
+        var modal = new bootstrap.Modal(document.getElementById('angebotEditModal'));
+        modal.show();
+    }
+
+    // Initialize lists on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initiale Daten von Flask/Jinja übernehmen
+        currentOrderA = {{ klassen_reihenfolge_a | tojson }};
+        currentOrderB = {{ klassen_reihenfolge_b | tojson }};
+        
+        // Listen initial rendern
+        renderList('a');
+        renderList('b');
+    });
+    </script>
+{% endblock %}
