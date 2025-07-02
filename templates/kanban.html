@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.kanban-board {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    min-height: 75vh;
+}
+.kanban-list {
+    flex: 0 0 300px; /* Nicht wachsen, nicht schrumpfen, Startbreite 300px */
+    background-color: #e9ecef;
+    border-radius: 5px;
+    padding: 0.5rem;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+.kanban-list-header {
+    font-weight: bold;
+    padding: 0.5rem;
+}
+.kanban-cards {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 50px; /* Damit leere Listen als Drop-Zone funktionieren */
+}
+.kanban-card {
+    background-color: #fff;
+    border-radius: 3px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    cursor: grab;
+}
+.kanban-card:hover {
+    background-color: #f8f9fa;
+}
+.add-card-form {
+    margin-top: auto; /* Schiebt das Formular nach unten */
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="kanban-board">
+    {% for list in lists %}
+    <div class="kanban-list" data-list-id="{{ list.id }}">
+        <div class="kanban-list-header">{{ list.name }}</div>
+        <ul class="kanban-cards list-group">
+            {% for card in list.cards %}
+             <li class="kanban-card list-group-item" data-card-id="{{ card.id }}">
+                 <!-- Ansichtsmodus -->
+                 <div class="card-view">
+                     <div class="d-flex justify-content-between align-items-start">
+                         <div class="flex-grow-1 pe-2 card-content-display" style="white-space: pre-wrap;">{{ card.content }}</div>
+                         <div class="card-controls">
+                             {% if card.user_id == current_user.id or current_user.role == 'Admin' %}
+                             <i class="fas fa-pencil-alt text-muted me-2" style="cursor: pointer;" onclick="showEditForm(this)"></i>
+                             <button type="button" class="btn-close btn-sm" aria-label="Löschen" onclick="deleteCard(event, {{ card.id }})"></button>
+                             {% endif %}
+                         </div>
+                     </div>
+                     <small class="text-muted d-block mt-2">von {{ card.creator.username }}</small>
+                 </div>
+                 <!-- Bearbeitungsmodus (standardmäßig ausgeblendet) -->
+                 <div class="card-edit" style="display: none;">
+                     <form onsubmit="saveCard(event, {{ card.id }})">
+                         <textarea class="form-control mb-2" rows="4">{{ card.content }}</textarea>
+                         <button type="submit" class="btn btn-success btn-sm">Speichern</button>
+                         <button type="button" class="btn btn-secondary btn-sm" onclick="hideEditForm(this)">Abbrechen</button>
+                     </form>
+                 </div>
+             </li>
+            {% endfor %}
+        </ul>
+        <form class="add-card-form mt-2" onsubmit="addCard(event, {{ list.id }})">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Neue Aufgabe..." required>
+                <button type="submit" class="btn btn-secondary btn-sm">+</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const lists = document.querySelectorAll('.kanban-cards');
+    lists.forEach(list => {
+        new Sortable(list, {
+            group: 'kanban', // Erlaubt das Verschieben zwischen allen Listen mit dieser Gruppe
+            animation: 150,
+            ghostClass: 'bg-info',
+            onEnd: function (evt) {
+                const toListId = evt.to.closest('.kanban-list').dataset.listId;
+                const cardIdsInOrder = Array.from(evt.to.children).map(card => card.dataset.cardId);
+
+                fetch('/api/kanban/card/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_list_id: toListId, ordered_ids: cardIdsInOrder })
+                }).then(r => r.json()).then(data => {
+                    if (!data.success) { alert('Fehler: ' + data.error); window.location.reload(); }
+                });
+            }
+        });
+    });
+});
+
+function addCard(event, listId) {
+    event.preventDefault();
+    const input = event.target.querySelector('input[type="text"]');
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch('/api/kanban/card/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content, list_id: listId })
+    }).then(r => r.json()).then(data => {
+        if (data.success) { window.location.reload(); } 
+        else { alert('Fehler: ' + data.error); }
+    });
+}
+
+function deleteCard(event, cardId) {
+    // Verhindert, dass das Drag-and-Drop-Event durch den Klick ausgelöst wird
+    event.stopPropagation(); 
+
+    if (!confirm('Sind Sie sicher, dass Sie diese Aufgabe löschen möchten?')) {
+        return;
+    }
+
+    fetch(`/api/kanban/card/delete/${cardId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            window.location.reload(); // Einfachste Methode: Seite neu laden
+        } else {
+            alert('Fehler beim Löschen: ' + (data.error || 'Unbekannter Fehler'));
+        }
+    });
+}
+
+function showEditForm(iconElement) {
+    const cardLi = iconElement.closest('.kanban-card');
+    cardLi.querySelector('.card-view').style.display = 'none';
+    cardLi.querySelector('.card-edit').style.display = 'block';
+    // Setzt den Fokus auf die Textarea
+    cardLi.querySelector('textarea').focus();
+}
+
+function hideEditForm(buttonElement) {
+    const cardLi = buttonElement.closest('.kanban-card');
+    cardLi.querySelector('.card-view').style.display = 'block';
+    cardLi.querySelector('.card-edit').style.display = 'none';
+}
+
+function saveCard(event, cardId) {
+    event.preventDefault();
+    const form = event.target;
+    const textarea = form.querySelector('textarea');
+    const newContent = textarea.value.trim();
+
+    if (!newContent) {
+        alert('Der Inhalt darf nicht leer sein.');
+        return;
+    }
+
+    fetch(`/api/kanban/card/edit/${cardId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            // Inhalt dynamisch aktualisieren, ohne die Seite neu zu laden
+            const cardLi = form.closest('.kanban-card');
+            cardLi.querySelector('.card-content-display').textContent = newContent;
+            hideEditForm(form);
+        } else {
+            alert('Fehler beim Speichern: ' + (data.error || 'Unbekannter Fehler'));
+        }
+    });
+}
+</script>
+{% endblock %}

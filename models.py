@@ -148,3 +148,30 @@ class Event(db.Model):
 
     def __repr__(self):
         return f"Event('{self.title}', '{self.start}')"
+
+# =====================================================================
+# Kanban-Board
+# =====================================================================
+
+class KanbanList(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    # Wenn eine Liste gelöscht wird, werden alle zugehörigen Karten mitgelöscht.
+    cards = db.relationship('KanbanCard', backref='list', lazy=True, cascade="all, delete-orphan", order_by="KanbanCard.position")
+
+    def __repr__(self):
+        return f"KanbanList('{self.name}', '{self.position}')"
+
+class KanbanCard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    list_id = db.Column(db.Integer, db.ForeignKey('kanban_list.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    # Verknüpfung zum Benutzer, der die Karte erstellt hat
+    creator = db.relationship('User')
+
+    def __repr__(self):
+        return f"KanbanCard('{self.content}', '{self.position}')"

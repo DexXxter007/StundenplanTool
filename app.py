@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from threading import Thread
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event
-from flask_mail import Mail, Message
+from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event, KanbanList, KanbanCard
+from flask_mail import Mail, Message # type: ignore
 from constants import TAGE_DER_WOCHE, LEHRER_FARBEN_MAP, DEFAULT_LEHRER_FARBE_NAME
-from forms import RegistrationForm, LoginForm
+from forms import LoginForm
 import scheduler_web
 import io
 import openpyxl
@@ -208,21 +208,6 @@ def reset_token(token):
             flash('Das Passwort darf nicht leer sein.', 'danger')
 
     return render_template('reset_token.html', title='Neues Passwort festlegen', token=token)
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('stundenplan_anzeigen'))
-        
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, password=hashed_password, role=ROLE_BENUTZER) # Default role for new users
-        db.session.add(user)
-        db.session.commit()
-        flash('Ihr Konto wurde erstellt! Sie können sich jetzt anmelden.', 'success')
-        return redirect(url_for('login'))
-    return render_template('register.html', title='Registrieren', form=form)
 
 @app.route('/logout')
 def logout():
@@ -1734,3 +1719,95 @@ def downloads_delete(filename):
 @login_required
 def downloads_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
+
+# =====================================================================
+# Kanban Board
+# =====================================================================
+
+@app.route('/kanban')
+@login_required
+def kanban_board():
+    """Displays the Kanban board."""
+    lists = KanbanList.query.order_by(KanbanList.position).all()
+    return render_template('kanban.html', title='Aufgaben (Kanban)', lists=lists)
+
+@app.route('/api/kanban/card/add', methods=['POST'])
+@login_required
+def kanban_add_card():
+    data = request.get_json()
+    content = data.get('content')
+    list_id = data.get('list_id')
+
+    if not content or not list_id:
+        return jsonify({'success': False, 'error': 'Fehlender Inhalt oder Listen-ID'}), 400
+
+    kanban_list = KanbanList.query.get(list_id)
+    if not kanban_list:
+        return jsonify({'success': False, 'error': 'Liste nicht gefunden'}), 404
+
+    # Karte am Ende der Liste hinzufügen
+    position = len(kanban_list.cards)
+
+    new_card = KanbanCard(
+        content=content,
+        list_id=list_id,
+        position=position,
+        user_id=current_user.id
+    )
+    db.session.add(new_card)
+    db.session.commit()
+
+    return jsonify({'success': True, 'card_id': new_card.id})
+
+@app.route('/api/kanban/card/move', methods=['POST'])
+@login_required
+def kanban_move_card():
+    data = request.get_json()
+    new_list_id = data.get('new_list_id')
+    ordered_ids = data.get('ordered_ids') # Array mit Karten-IDs in der neuen Reihenfolge
+
+    if not new_list_id or ordered_ids is None:
+        return jsonify({'success': False, 'error': 'Fehlende Parameter'}), 400
+
+    # Aktualisiere alle Karten in der Zielliste, um die neue Reihenfolge widerzuspiegeln
+    for index, card_id in enumerate(ordered_ids):
+        card = KanbanCard.query.get(card_id)
+        if card:
+            card.list_id = new_list_id
+            card.position = index
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/kanban/card/delete/<int:card_id>', methods=['POST'])
+@login_required
+def kanban_delete_card(card_id):
+    card = KanbanCard.query.get_or_404(card_id)
+
+    # Optional: Hier könnte eine Berechtigungsprüfung stehen
+    # z.B. ob der current_user der Ersteller ist oder Admin-Rechte hat.
+    # if card.user_id != current_user.id and current_user.role != ROLE_ADMIN:
+    #     return jsonify({'success': False, 'error': 'Keine Berechtigung'}), 403
+
+    db.session.delete(card)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/kanban/card/edit/<int:card_id>', methods=['POST'])
+@login_required
+def kanban_edit_card(card_id):
+    card = KanbanCard.query.get_or_404(card_id)
+    data = request.get_json()
+    new_content = data.get('content')
+
+    # Berechtigungsprüfung: Nur Ersteller oder Admin dürfen bearbeiten
+    if card.user_id != current_user.id and current_user.role != ROLE_ADMIN:
+        return jsonify({'success': False, 'error': 'Keine Berechtigung zum Bearbeiten'}), 403
+
+    if not new_content or not new_content.strip():
+        return jsonify({'success': False, 'error': 'Inhalt darf nicht leer sein'}), 400
+
+    card.content = new_content.strip()
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Karte aktualisiert'})

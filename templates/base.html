@@ -62,6 +62,12 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('kalender') }}">Kalender</a>
                     </li>
+                    <!-- NEU: Kanban Board -->
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('kanban_board') }}">Aufgaben</a>
+                    </li>
+                    {% endif %}
     
                     <!-- 3. Verwaltung (Dropdown for Admin & Planer) -->
                     {% if current_user.is_authenticated and (current_user.role == 'Admin' or current_user.role == 'Planer') %}
@@ -122,7 +128,6 @@
                         </li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Anmelden</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">Registrieren</a></li>
                     {% endif %}
                 </ul>
             </div>
