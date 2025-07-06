@@ -62,6 +62,11 @@
   <button type="button" class="btn btn-success me-3" data-bs-toggle="modal" data-bs-target="#planErstellenModal">
     <i class="fa fa-cogs"></i> Plan automatisch erstellen
   </button>
+  <form action="{{ url_for('stundenplan_leeren') }}" method="post" onsubmit="return confirm('Möchten Sie den gesamten bearbeitbaren Stundenplan wirklich unwiderruflich leeren?');" class="me-3">
+      <button type="submit" class="btn btn-outline-danger">
+          <i class="fa fa-eraser"></i> Plan leeren
+      </button>
+  </form>
   <a href="{{ url_for('stundenplan_verwaltung', woche='A') }}" class="btn btn-outline-primary {% if woche == 'A' %}active{% endif %} me-2">Woche A</a>
   <a href="{{ url_for('stundenplan_verwaltung', woche='B') }}" class="btn btn-outline-primary {% if woche == 'B' %}active{% endif %}">Woche B</a>
   {% if scheduler_meldungen %}

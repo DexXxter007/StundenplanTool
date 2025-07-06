@@ -702,6 +702,21 @@ def stundenplan_gespeichert_loeschen(plan_id):
     
     return redirect(url_for('stundenplan_verwaltung'))
 
+@app.route('/stundenplan/leeren', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def stundenplan_leeren():
+    """Löscht alle Einträge aus dem aktiven, bearbeitbaren Stundenplan."""
+    try:
+        num_deleted = db.session.query(StundenplanEintrag).delete()
+        db.session.commit()
+        flash(f'Der Stundenplan wurde geleert. {num_deleted} Einträge wurden gelöscht.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Leeren des Stundenplans: {e}', 'danger')
+    
+    return redirect(url_for('stundenplan_verwaltung'))
+
 @app.route('/plan/erstellen', methods=['POST'])
 @login_required
 @role_required([ROLE_ADMIN, ROLE_PLANER])
