@@ -10,12 +10,58 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="fa fa-archive me-2"></i>Stundenplan-Archiv
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <!-- Speichern -->
+      <div class="col-md-6 border-end">
+        <h5>Aktuellen Plan speichern</h5>
+        <p>Speichert den unten angezeigten, bearbeitbaren Stundenplan als neue Version im Archiv.</p>
+        <form action="{{ url_for('stundenplan_speichern') }}" method="post" class="d-flex gap-2">
+          <input type="text" name="plan_name" class="form-control" placeholder="Name für den Plan (z.B. Schuljahr 24/25)" required>
+          <button type="submit" class="btn btn-success flex-shrink-0"><i class="fa fa-save"></i> Speichern</button>
+        </form>
+      </div>
+      <!-- Laden -->
+      <div class="col-md-6">
+        <h5>Gespeicherten Plan laden</h5>
+        <p>Überschreibt den aktuellen, bearbeitbaren Stundenplan mit einer Version aus dem Archiv.</p>
+        {% if gespeicherte_plaene %}
+          <form action="{{ url_for('stundenplan_laden') }}" method="post" class="d-flex gap-2">
+            <select name="plan_id" class="form-select">
+              {% for plan in gespeicherte_plaene %}
+                <option value="{{ plan.id }}">{{ plan.name }} (gespeichert am {{ plan.created_at.strftime('%d.%m.%Y') }})</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary flex-shrink-0" onclick="return confirm('Achtung! Der aktuelle, ungespeicherte Stundenplan wird überschrieben. Fortfahren?');"><i class="fa fa-upload"></i> Laden</button>
+          </form>
+          <hr>
+          <h6>Gespeicherte Pläne verwalten:</h6>
+          <ul class="list-group">
+            {% for plan in gespeicherte_plaene %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ plan.name }}
+                <form action="{{ url_for('stundenplan_gespeichert_loeschen', plan_id=plan.id) }}" method="post" onsubmit="return confirm('Möchten Sie den gespeicherten Plan \'{{ plan.name }}\' wirklich unwiderruflich löschen?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash"></i></button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="alert alert-secondary">Noch keine Pläne im Archiv vorhanden.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="mb-3 d-flex align-items-center">
-  <form action="{{ url_for('plan_erstellen') }}" method="post" class="me-3">
-    <button type="submit" class="btn btn-success">
-      <i class="fa fa-cogs"></i> Plan automatisch erstellen
-    </button>
-  </form>
+  <button type="button" class="btn btn-success me-3" data-bs-toggle="modal" data-bs-target="#planErstellenModal">
+    <i class="fa fa-cogs"></i> Plan automatisch erstellen
+  </button>
   <a href="{{ url_for('stundenplan_verwaltung', woche='A') }}" class="btn btn-outline-primary {% if woche == 'A' %}active{% endif %} me-2">Woche A</a>
   <a href="{{ url_for('stundenplan_verwaltung', woche='B') }}" class="btn btn-outline-primary {% if woche == 'B' %}active{% endif %}">Woche B</a>
   {% if scheduler_meldungen %}
@@ -185,6 +231,37 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEU: Modal für Planerstellungs-Optionen -->
+<div class="modal fade" id="planErstellenModal" tabindex="-1" aria-labelledby="planErstellenModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="planErstellenModalLabel">Planerstellung starten</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+      </div>
+      <div class="modal-body">
+        <p>Wählen Sie den Modus für die automatische Planerstellung:</p>
+        <div class="d-grid gap-3">
+          <form action="{{ url_for('plan_erstellen') }}" method="post">
+            <input type="hidden" name="modus" value="neu">
+            <button type="submit" class="btn btn-danger w-100 p-3">
+              <strong class="d-block fs-5">Alles neu planen</strong>
+              <small class="d-block">Löscht den gesamten aktuellen Plan und erstellt ihn von Grund auf neu.</small>
+            </button>
+          </form>
+          <form action="{{ url_for('plan_erstellen') }}" method="post">
+            <input type="hidden" name="modus" value="behalten">
+            <button type="submit" class="btn btn-primary w-100 p-3">
+              <strong class="d-block fs-5">Freie Slots füllen</strong>
+              <small class="d-block">Behält alle manuell gesetzten Stunden und füllt nur die leeren Lücken.</small>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Termin abgelehnt</title>
+</head>
+<body>
+    <p>Hallo {{ creator.username }},</p>
+    <p>Dein im Stundentool eingetragener Termin "<b>{{ event.title }}</b>" für den <b>{{ event.start.strftime('%d.%m.%Y um %H:%M Uhr') }}</b> wurde leider abgelehnt.</p>
+    <p>Mit freundlichen Grüßen,<br>Dein Stundentool</p>
+</body>
+</html>

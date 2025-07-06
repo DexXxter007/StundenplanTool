@@ -182,6 +182,32 @@ class KanbanCard(db.Model):
 # Vertretungsplan
 # =====================================================================
 
+class GespeicherterStundenplan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    eintraege = db.relationship('GespeicherterStundenplanEintrag', backref='gespeicherter_plan', lazy=True, cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<GespeicherterStundenplan {self.name}>'
+
+class GespeicherterStundenplanEintrag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    gespeicherter_stundenplan_id = db.Column(db.Integer, db.ForeignKey('gespeicherter_stundenplan.id'), nullable=False)
+    
+    # Kopierte Felder aus StundenplanEintrag
+    woche = db.Column(db.String(1), nullable=False)
+    tag = db.Column(db.String(2), nullable=False)
+    slot = db.Column(db.Integer, nullable=False)
+    klasse_id = db.Column(db.Integer, db.ForeignKey('klasse.id'), nullable=False)
+    angebot_id = db.Column(db.Integer, db.ForeignKey('angebot.id'), nullable=False)
+    lehrer1_id = db.Column(db.Integer, db.ForeignKey('lehrer.id'), nullable=False)
+    lehrer2_id = db.Column(db.Integer, db.ForeignKey('lehrer.id'), nullable=True)
+
+    def __repr__(self):
+        return f'<GespeicherterStundenplanEintrag für Plan {self.gespeicherter_stundenplan_id}>'
+
+
 class Vertretungsplan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     gueltig_von = db.Column(db.Date, nullable=False)

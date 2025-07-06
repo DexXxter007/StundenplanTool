@@ -3,7 +3,7 @@ from collections import defaultdict
 from constants import TAGE_DER_WOCHE
 
 class Scheduler:
-    def __init__(self, lehrerliste, klassenliste, angebote_liste, sammelangebote_liste, num_slots, stunden_pro_tag_config):
+    def __init__(self, lehrerliste, klassenliste, angebote_liste, sammelangebote_liste, num_slots, stunden_pro_tag_config, existing_entries=None):
         self.lehrerliste = {l['name']: l for l in lehrerliste}
         self.klassenliste = {k['klasse']: k for k in klassenliste}
         self.angebote_liste = {a['name']: a for a in angebote_liste}
@@ -11,6 +11,7 @@ class Scheduler:
         self.num_slots = num_slots
         self.stunden_pro_tag_config = stunden_pro_tag_config
         self.meldungen = []
+        self.existing_entries = existing_entries or []
 
         # Initialisiere den leeren Plan
         self.plan = {"A": {}, "B": {}}
@@ -34,8 +35,9 @@ class Scheduler:
         best_plan = None
         best_score = float('-inf')
 
-        for run in range(max_runs):
+        for run in range(max_runs): # Mehrere Durchläufe sind für den "greedy" Ansatz nicht mehr so sinnvoll, aber wir behalten die Struktur bei
             self._reset_plan()
+            self._pre_populate_plan() # NEU: Manuell gesetzte Stunden zuerst platzieren
             self._platziere_sammelangebote()
             
             # Sammle ALLE Anforderungen von ALLEN Klassen
@@ -147,6 +149,39 @@ class Scheduler:
         self.klasse_auslastung_tag = {"A": defaultdict(lambda: defaultdict(int)), "B": defaultdict(lambda: defaultdict(int))}
         self.lehrer_auslastung_tag = {"A": defaultdict(lambda: defaultdict(int)), "B": defaultdict(lambda: defaultdict(int))}
 
+    def _pre_populate_plan(self):
+        """Füllt den Plan mit den manuell gesetzten Einträgen vor."""
+        if not self.existing_entries:
+            return
+
+        for entry in self.existing_entries:
+            woche = entry.get('woche')
+            tag = entry.get('tag')
+            slot = entry.get('slot')
+            klasse_name = entry.get('klasse_name')
+            angebot_name = entry.get('angebot_name')
+            lehrer1_name = entry.get('lehrer_name')
+            lehrer2_name = entry.get('lehrer2_name')
+
+            # Grundlegende Validierung
+            if None in [woche, tag, slot, klasse_name, angebot_name, lehrer1_name]:
+                self.meldungen.append(f"WARNUNG: Überspringe unvollständigen bestehenden Eintrag: {entry}")
+                continue
+            
+            # Platziere den Eintrag im internen Plan
+            self.plan[woche][klasse_name][tag][slot] = {
+                "angebot": angebot_name,
+                "lehrer": lehrer1_name,
+                "lehrer2": lehrer2_name
+            }
+
+            # Aktualisiere die Auslastungstracker für die gesetzten Stunden
+            self.lehrer_auslastung_woche[woche][lehrer1_name] += 1
+            self.lehrer_auslastung_tag[woche][lehrer1_name][tag] += 1
+            if lehrer2_name:
+                self.lehrer_auslastung_woche[woche][lehrer2_name] += 1
+                self.lehrer_auslastung_tag[woche][lehrer2_name][tag] += 1
+
 
     def _bewerte_plan(self):
         # Einfache Bewertungsfunktion: Zähle belegte Stunden (je mehr, desto besser)
@@ -232,24 +267,48 @@ class Scheduler:
 
 
     def _sammle_stunden_anforderungen(self):
-        anforderungen = []
+        """Sammelt die noch zu planenden Stunden unter Berücksichtigung der bereits gesetzten Einträge."""
+        # 1. Gesamtbedarf für jedes Angebot pro Klasse und Woche ermitteln
+        gesamtbedarf = defaultdict(lambda: defaultdict(int))
         for klasse_name, klasse_info in self.klassenliste.items():
             wochen_typ_klasse = klasse_info.get("woche", "AB")
+            wochen_liste = ["A", "B"] if wochen_typ_klasse == "AB" else [wochen_typ_klasse]
             for angebot_def in klasse_info.get("angebote_stunden", []):
                 angebot_name = angebot_def.get("angebot")
                 stunden_gesamt = angebot_def.get("stunden_gesamt", 0)
                 if not angebot_name or stunden_gesamt == 0:
                     continue
-                angebot_info = self.angebote_liste.get(angebot_name, {})
-                block_groesse = angebot_info.get("block_groesse", 2)
-                num_doppel = stunden_gesamt // 2 if block_groesse == 2 else 0
-                num_einzel = stunden_gesamt % 2 if block_groesse == 2 else stunden_gesamt
-                wochen_liste = ["A", "B"] if wochen_typ_klasse == "AB" else [wochen_typ_klasse]
                 for woche in wochen_liste:
-                    for _ in range(num_doppel):
-                        anforderungen.append({"woche": woche, "klasse": klasse_name, "angebot": angebot_name, "dauer": 2})
-                    for _ in range(num_einzel):
-                        anforderungen.append({"woche": woche, "klasse": klasse_name, "angebot": angebot_name, "dauer": 1})
+                    gesamtbedarf[(klasse_name, angebot_name)][woche] += stunden_gesamt
+
+        # 2. Bereits platzierte Stunden vom Gesamtbedarf abziehen
+        for woche in self.plan:
+            for klasse_name, tages_plaene in self.plan[woche].items():
+                for tag, slots in tages_plaene.items():
+                    for eintrag in slots:
+                        if eintrag:  # Ein manuell gesetzter Eintrag
+                            angebot_name = eintrag.get('angebot')
+                            if (klasse_name, angebot_name) in gesamtbedarf:
+                                if gesamtbedarf[(klasse_name, angebot_name)][woche] > 0:
+                                    gesamtbedarf[(klasse_name, angebot_name)][woche] -= 1
+
+        # 3. Die verbleibenden Anforderungen in eine Liste umwandeln
+        anforderungen = []
+        for (klasse_name, angebot_name), wochen_stunden in gesamtbedarf.items():
+            angebot_info = self.angebote_liste.get(angebot_name, {})
+            block_groesse = angebot_info.get("block_groesse", 2)
+            for woche, stunden_rest in wochen_stunden.items():
+                if stunden_rest <= 0:
+                    continue
+                
+                num_doppel = stunden_rest // 2 if block_groesse == 2 else 0
+                num_einzel = stunden_rest % 2 if block_groesse == 2 else stunden_rest
+                
+                for _ in range(num_doppel):
+                    anforderungen.append({"woche": woche, "klasse": klasse_name, "angebot": angebot_name, "dauer": 2})
+                for _ in range(num_einzel):
+                    anforderungen.append({"woche": woche, "klasse": klasse_name, "angebot": angebot_name, "dauer": 1})
+
         anforderungen.sort(key=lambda x: x['dauer'], reverse=True)
         return anforderungen
 
@@ -378,11 +437,12 @@ class Scheduler:
 
 def generate_schedule_data(
     lehrerliste, klassenliste, angebote_liste, sammelangebote_liste,
-    klassen_namen_im_plan_display_order, num_slots_pro_tag, stunden_pro_tag_config
+    klassen_namen_im_plan_display_order, num_slots_pro_tag, stunden_pro_tag_config,
+    existing_entries=None # NEU
 ):
     scheduler = Scheduler(
         lehrerliste, klassenliste, angebote_liste, sammelangebote_liste,
-        num_slots_pro_tag, stunden_pro_tag_config
+        num_slots_pro_tag, stunden_pro_tag_config, existing_entries
     )
     return scheduler.generate_schedule()
 

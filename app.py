@@ -7,7 +7,7 @@ from datetime import datetime, timezone, date
 from threading import Thread
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event, KanbanList, KanbanCard, Vertretungsplan, VertretungsplanEintrag
+from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event, KanbanList, KanbanCard, Vertretungsplan, VertretungsplanEintrag, GespeicherterStundenplan, GespeicherterStundenplanEintrag
 from flask_mail import Mail, Message # type: ignore
 from constants import TAGE_DER_WOCHE, LEHRER_FARBEN_MAP, DEFAULT_LEHRER_FARBE_NAME
 from forms import LoginForm
@@ -565,6 +565,7 @@ def abwesenheiten_verwalten():
 @login_required
 @role_required([ROLE_ADMIN, ROLE_PLANER])
 def stundenplan_verwalten():
+    gespeicherte_plaene = GespeicherterStundenplan.query.order_by(GespeicherterStundenplan.created_at.desc()).all()
     woche = request.args.get('woche', 'A')
     klassen_reihenfolge_a_str = get_setting('klassen_reihenfolge_a', '')
     klassen_reihenfolge_b_str = get_setting('klassen_reihenfolge_b', '')
@@ -592,6 +593,7 @@ def stundenplan_verwalten():
     return render_template(
         'stundenplan_verwaltung.html',
         title='Stundenplan Verwaltung',
+        gespeicherte_plaene=gespeicherte_plaene,
         scheduler_meldungen=scheduler_meldungen,
         geordnete_klassen=geordnete_klassen,
         plan_data_per_tag=plan_data_per_tag,
@@ -603,20 +605,136 @@ def stundenplan_verwalten():
         klassen_liste=Klasse.query.order_by(Klasse.name).all(),  # falls im Template benötigt
     )
 
+@app.route('/stundenplan/speichern', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def stundenplan_speichern():
+    plan_name = request.form.get('plan_name')
+    if not plan_name:
+        flash('Ein Name für den Plan ist erforderlich.', 'danger')
+        return redirect(url_for('stundenplan_verwaltung'))
+
+    if GespeicherterStundenplan.query.filter_by(name=plan_name).first():
+        flash(f'Ein Plan mit dem Namen "{plan_name}" existiert bereits. Bitte wählen Sie einen anderen Namen.', 'warning')
+        return redirect(url_for('stundenplan_verwaltung'))
+
+    try:
+        # 1. Neuen Container für den gespeicherten Plan erstellen
+        neuer_gespeicherter_plan = GespeicherterStundenplan(name=plan_name)
+        db.session.add(neuer_gespeicherter_plan)
+        db.session.flush() # Nötig, um die ID für die Einträge zu bekommen
+
+        # 2. Alle Einträge aus dem aktiven Plan kopieren
+        aktive_eintraege = StundenplanEintrag.query.all()
+        if not aktive_eintraege:
+            flash('Der aktuelle Stundenplan ist leer. Nichts zu speichern.', 'info')
+            return redirect(url_for('stundenplan_verwaltung'))
+
+        for eintrag in aktive_eintraege:
+            kopie = GespeicherterStundenplanEintrag(
+                gespeicherter_stundenplan_id=neuer_gespeicherter_plan.id,
+                woche=eintrag.woche,
+                tag=eintrag.tag,
+                slot=eintrag.slot,
+                klasse_id=eintrag.klasse_id,
+                angebot_id=eintrag.angebot_id,
+                lehrer1_id=eintrag.lehrer1_id,
+                lehrer2_id=eintrag.lehrer2_id
+            )
+            db.session.add(kopie)
+        
+        db.session.commit()
+        flash(f'Stundenplan als "{plan_name}" erfolgreich gespeichert.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Speichern des Stundenplans: {e}', 'danger')
+
+    return redirect(url_for('stundenplan_verwaltung'))
+
+@app.route('/stundenplan/laden', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def stundenplan_laden():
+    plan_id = request.form.get('plan_id')
+    if not plan_id:
+        flash('Kein Plan zum Laden ausgewählt.', 'danger')
+        return redirect(url_for('stundenplan_verwaltung'))
+
+    plan_zum_laden = GespeicherterStundenplan.query.get_or_404(plan_id)
+
+    try:
+        # 1. Aktiven Plan löschen
+        StundenplanEintrag.query.delete()
+
+        # 2. Gespeicherten Plan in den aktiven Plan kopieren
+        for eintrag in plan_zum_laden.eintraege:
+            neuer_aktiver_eintrag = StundenplanEintrag(
+                woche=eintrag.woche,
+                tag=eintrag.tag,
+                slot=eintrag.slot,
+                klasse_id=eintrag.klasse_id,
+                angebot_id=eintrag.angebot_id,
+                lehrer1_id=eintrag.lehrer1_id,
+                lehrer2_id=eintrag.lehrer2_id
+            )
+            db.session.add(neuer_aktiver_eintrag)
+        
+        db.session.commit()
+        flash(f'Stundenplan "{plan_zum_laden.name}" wurde erfolgreich geladen.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Laden des Stundenplans: {e}', 'danger')
+
+    return redirect(url_for('stundenplan_verwaltung'))
+
+@app.route('/stundenplan/gespeichert/loeschen/<int:plan_id>', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def stundenplan_gespeichert_loeschen(plan_id):
+    plan = GespeicherterStundenplan.query.get_or_404(plan_id)
+    try:
+        db.session.delete(plan)
+        db.session.commit()
+        flash(f'Gespeicherter Plan "{plan.name}" wurde gelöscht.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Löschen des gespeicherten Plans: {e}', 'danger')
+    
+    return redirect(url_for('stundenplan_verwaltung'))
+
 @app.route('/plan/erstellen', methods=['POST'])
 @login_required
 @role_required([ROLE_ADMIN, ROLE_PLANER])
 def plan_erstellen():
+    # NEU: Modus aus dem Formular lesen
+    modus = request.form.get('modus', 'neu')
+
+    # NEU: Bestehende Einträge sammeln, wenn Modus 'behalten' ist
+    existing_entries = []
+    if modus == 'behalten':
+        flash('Modus "Freie Slots füllen" gewählt. Bestehende Einträge werden beibehalten.', 'info')
+        # Lade den bestehenden Plan und formatiere ihn für den Scheduler
+        eintraege_db = StundenplanEintrag.query.options(
+            db.joinedload(StundenplanEintrag.klasse),
+            db.joinedload(StundenplanEintrag.angebot),
+            db.joinedload(StundenplanEintrag.lehrer1),
+            db.joinedload(StundenplanEintrag.lehrer2)
+        ).all()
+        for e in eintraege_db:
+            if not all([e.klasse, e.angebot, e.lehrer1]): continue
+            existing_entries.append({
+                'woche': e.woche,
+                'tag': e.tag,
+                'slot': e.slot,
+                'klasse_name': e.klasse.name,
+                'angebot_name': e.angebot.name,
+                'lehrer_name': e.lehrer1.name,
+                'lehrer2_name': e.lehrer2.name if e.lehrer2 else None
+            })
+    else: # modus == 'neu'
+        flash('Modus "Alles neu planen" gewählt. Der bestehende Plan wird gelöscht.', 'info')
+
     flash('Starte Planerstellung... Dies kann einen Moment dauern.', 'info')
-    try:
-        num_deleted = db.session.query(StundenplanEintrag).delete()
-        db.session.commit()
-        if num_deleted > 0:
-            flash(f'{num_deleted} alte Planeinträge gelöscht.', 'info')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Fehler beim Löschen des alten Plans: {e}', 'danger')
-        return redirect(url_for('stundenplan_verwaltung'))
 
     # --- Sammelangebote robust laden ---
     sammelangebote_db = Sammelangebot.query.all()
@@ -729,7 +847,8 @@ def plan_erstellen():
         print("Stunden pro Tag Config:", stunden_pro_tag_config)
         plan_rohdaten, meldungen = scheduler_web.generate_schedule_data(
             lehrerliste_dict, klassenliste_dict, angebote_liste_dict, sammelangebote_liste_dict,
-            klassen_namen_im_plan_display_order, num_slots_pro_tag, stunden_pro_tag_config
+            klassen_namen_im_plan_display_order, num_slots_pro_tag, stunden_pro_tag_config,
+            existing_entries=existing_entries # NEU
         )
         print("DEBUG: Planerstellung abgeschlossen.")
     except Exception as e:
@@ -737,6 +856,18 @@ def plan_erstellen():
         print("Fehler bei der Planerstellung:", e)
         traceback.print_exc()
         flash(f'Fehler bei der Planerstellung: {e}', 'danger')
+        return redirect(url_for('stundenplan_verwaltung'))
+
+    # --- ALTEN PLAN LÖSCHEN und NEUEN SPEICHERN ---
+    # Dies geschieht jetzt immer, da der Scheduler einen kompletten Plan zurückgibt
+    try:
+        num_deleted = db.session.query(StundenplanEintrag).delete()
+        db.session.commit()
+        if num_deleted > 0 and modus == 'neu':
+             flash(f'{num_deleted} alte Planeinträge gelöscht.', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Löschen des alten Plans: {e}', 'danger')
         return redirect(url_for('stundenplan_verwaltung'))
 
     klassen_map = {k.name: k for k in klassen_db}
@@ -1489,7 +1620,14 @@ def api_event_approve(event_id):
     event = Event.query.get_or_404(event_id)
     event.status = 'approved'
     db.session.commit()
-    # Hier könnte eine Benachrichtigung an den Ersteller gesendet werden.
+    # --- NEU: Benachrichtigung senden ---
+    try:
+        if event.user and event.user.email:
+            html = render_template('email/event_approved.html', event=event, creator=event.user)
+            text = render_template('email/event_approved.txt', event=event, creator=event.user)
+            send_email(f"Dein Termin wurde genehmigt: {event.title}", [event.user.email], html, text)
+    except Exception as e:
+        app.logger.error(f"Fehler beim Senden der Genehmigungs-E-Mail: {e}")
     return jsonify({"status": "success", "message": "Termin genehmigt."})
 
 @app.route('/api/events/reject/<int:event_id>', methods=['POST'])
@@ -1499,7 +1637,14 @@ def api_event_reject(event_id):
     event = Event.query.get_or_404(event_id)
     event.status = 'rejected'
     db.session.commit()
-    # Hier könnte eine Benachrichtigung an den Ersteller gesendet werden.
+    # --- NEU: Benachrichtigung senden ---
+    try:
+        if event.user and event.user.email:
+            html = render_template('email/event_rejected.html', event=event, creator=event.user)
+            text = render_template('email/event_rejected.txt', event=event, creator=event.user)
+            send_email(f"Dein Termin wurde abgelehnt: {event.title}", [event.user.email], html, text)
+    except Exception as e:
+        app.logger.error(f"Fehler beim Senden der Ablehnungs-E-Mail: {e}")
     return jsonify({"status": "success", "message": "Termin abgelehnt."})
 
 def style_worksheet(ws, header_fill_color="4F81BD"):
