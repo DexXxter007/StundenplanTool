@@ -3,11 +3,11 @@ from collections import defaultdict
 import json # Import json module
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify, send_file, send_from_directory
 from functools import wraps
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from threading import Thread
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event, KanbanList, KanbanCard
+from models import db, User, Lehrer, Angebot, Klasse, Sammelangebot, StundenplanEintrag, Einstellung, Event, KanbanList, KanbanCard, Vertretungsplan, VertretungsplanEintrag
 from flask_mail import Mail, Message # type: ignore
 from constants import TAGE_DER_WOCHE, LEHRER_FARBEN_MAP, DEFAULT_LEHRER_FARBE_NAME
 from forms import LoginForm
@@ -95,57 +95,60 @@ def send_email(subject, recipients, html_body, text_body):
 @login_required
 @role_required([ROLE_ADMIN, ROLE_PLANER, ROLE_BENUTZER])
 def stundenplan_anzeigen():
+    # --- GEÄNDERTE LOGIK: Es wird JEDER existierende Vertretungsplan geholt ---
+    # Da es immer nur einen geben kann, ist .first() korrekt.
+    vorhandener_vertretungsplan = Vertretungsplan.query.first()
+
+    # Das Flag is_vertretungsplan ist wahr, wenn irgendein Plan existiert.
+    is_vertretungsplan = bool(vorhandener_vertretungsplan)
+    # --- ÄNDERUNG: Dashboard zeigt IMMER den normalen Plan an ---
     woche = request.args.get('woche', 'A')
+    title_woche_info = f" (Woche {woche})"
+
+    plan_eintraege = StundenplanEintrag.query.filter_by(woche=woche).all()
+
     klassen_reihenfolge_a_str = get_setting('klassen_reihenfolge_a', '')
     klassen_reihenfolge_b_str = get_setting('klassen_reihenfolge_b', '')
     alle_klassen_map = {k.name: k for k in Klasse.query.all()}
+    
+    # --- ÄNDERUNG: Klassenfilterung ist immer für A/B Woche, nicht mehr für Vertretungsplan ---
     if woche == 'A':
         geordnete_klassen = [alle_klassen_map[name] for name in klassen_reihenfolge_a_str.split(',') if name in alle_klassen_map]
     else:
         geordnete_klassen = [alle_klassen_map[name] for name in klassen_reihenfolge_b_str.split(',') if name in alle_klassen_map]
+
     zeiten_text = get_setting('zeiten_text', '08:00-08:45\n08:45-09:30\n09:30-09:45 Pause\n09:45-10:30\n10:30-11:15\n11:15-11:45 Pause\n11:45-12:30\n12:30-13:15')
     zeit_slots = parse_zeiten(zeiten_text)
     num_slots = len(zeit_slots)
-    plan_eintraege = StundenplanEintrag.query.filter_by(woche=woche).all()
+
     plan_data_per_tag = defaultdict(lambda: defaultdict(dict))
     for eintrag in plan_eintraege:
         if not all([eintrag.angebot, eintrag.lehrer1, eintrag.klasse]):
             continue
+
         eintrag_dict = {
             'angebot': {'id': eintrag.angebot.id, 'name': eintrag.angebot.name},
             'lehrer1': {'id': eintrag.lehrer1.id, 'name': eintrag.lehrer1.name, 'farbe': eintrag.lehrer1.farbe},
-            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name} if eintrag.lehrer2 else None
+            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name, 'farbe': eintrag.lehrer2.farbe} if eintrag.lehrer2 else None
         }
         if eintrag.slot < num_slots:
             plan_data_per_tag[eintrag.tag][eintrag.slot][eintrag.klasse.name] = eintrag_dict
-    # hole alle_lehrer als Liste von Dicts mit id und farbe
-    alle_lehrer = db.session.query(Lehrer).all()
-    lehrer_dict = {str(l.id): l.farbe for l in alle_lehrer}
 
-    # Wenn du die Stundenplan-Einträge aufbereitest:
-    for tag, slots in plan_data_per_tag.items():
-        for slot_idx, slot in slots.items():
-            for klasse_name, eintrag in slot.items():
-                # lehrer1
-                if hasattr(eintrag, 'lehrer1') and eintrag.lehrer1:
-                    farbe = lehrer_dict.get(str(eintrag.lehrer1.id))
-                    if farbe:
-                        eintrag.lehrer1.farbe = farbe
-                # lehrer2
-                if hasattr(eintrag, 'lehrer2') and eintrag.lehrer2:
-                    farbe = lehrer_dict.get(str(eintrag.lehrer2.id))
-                    if farbe:
-                        eintrag.lehrer2.farbe = farbe
+    title = f"Stundenplan{title_woche_info}"
+
+    alle_lehrer = db.session.query(Lehrer).all()
 
     return render_template(
         'stundenplan.html',
-        title='Stundenplan',
+        title=title,
         geordnete_klassen=geordnete_klassen,
         plan_data_per_tag=plan_data_per_tag,
         zeit_slots=zeit_slots,
         tage_der_woche=TAGE_DER_WOCHE,
         woche=woche,
         alle_lehrer=alle_lehrer,
+        is_vertretungsplan=is_vertretungsplan, # Flag wird weiterhin übergeben
+        aktiver_vertretungsplan=vorhandener_vertretungsplan # Plan-Objekt wird übergeben
     )
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -581,7 +584,7 @@ def stundenplan_verwalten():
         eintrag_dict = {
             'angebot': {'id': eintrag.angebot.id, 'name': eintrag.angebot.name},
             'lehrer1': {'id': eintrag.lehrer1.id, 'name': eintrag.lehrer1.name, 'farbe': eintrag.lehrer1.farbe},
-            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name} if eintrag.lehrer2 else None
+            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name, 'farbe': eintrag.lehrer2.farbe} if eintrag.lehrer2 else None
         }
         if eintrag.slot < num_slots:
             plan_data_per_tag[eintrag.tag][eintrag.slot][eintrag.klasse.name] = eintrag_dict
@@ -1394,16 +1397,34 @@ def stundenplan_delete():
 @login_required
 def api_events():
     events = []
-    for event in Event.query.all():
+    for event in Event.query.options(db.joinedload(Event.user)).all():
+        # --- NEU: Logik für status-basierte Anzeige ---
+        event_title = event.title
+        background_color = event.user.farbe if hasattr(event.user, "farbe") else "#3788d8"
+        
+        if event.status == 'pending':
+            event_title = f"[Offen] {event.title}"
+            background_color = "#f39c12" # Gelb
+        elif event.status == 'rejected':
+            event_title = f"[Abgelehnt] {event.title}"
+            background_color = "#e74c3c" # Rot
+        
+        # Admins/Planer sehen den Ersteller-Namen
+        if current_user.role in [ROLE_ADMIN, ROLE_PLANER]:
+             event_title += f" ({event.user.username})"
+
         events.append({
             "id": event.id,
-            "title": f"{event.title} ({event.user.username})",
+            "title": event_title,
             "raw_title": event.title,
             "start": event.start.isoformat(),
             "end": event.end.isoformat() if event.end else None,
             "allDay": event.all_day,
-            "backgroundColor": event.user.farbe if hasattr(event.user, "farbe") else "#3788d8",
-            "borderColor": event.user.farbe if hasattr(event.user, "farbe") else "#3788d8",
+            "backgroundColor": background_color,
+            "borderColor": background_color,
+            "status": event.status,
+            "creator_id": event.user_id,
+            "creator_name": event.user.username
         })
     return jsonify(events)
 
@@ -1441,10 +1462,9 @@ def api_events_add():
 
 @app.route('/api/events/update/<int:event_id>', methods=['POST'])
 @login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
 def api_events_update(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.user_id != current_user.id and current_user.role != ROLE_ADMIN:
-        return jsonify({"status": "error", "message": "Keine Berechtigung."}), 403
     data = request.get_json()
     event.title = data.get('title', event.title)
     event.start = datetime.fromisoformat(data.get('start').replace('Z', '+00:00'))
@@ -1455,13 +1475,32 @@ def api_events_update(event_id):
 
 @app.route('/api/events/delete/<int:event_id>', methods=['POST'])
 @login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
 def api_events_delete(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.user_id != current_user.id and current_user.role != ROLE_ADMIN:
-        return jsonify({"status": "error", "message": "Keine Berechtigung."}), 403
     db.session.delete(event)
     db.session.commit()
     return jsonify({"status": "success"})
+
+@app.route('/api/events/approve/<int:event_id>', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def api_event_approve(event_id):
+    event = Event.query.get_or_404(event_id)
+    event.status = 'approved'
+    db.session.commit()
+    # Hier könnte eine Benachrichtigung an den Ersteller gesendet werden.
+    return jsonify({"status": "success", "message": "Termin genehmigt."})
+
+@app.route('/api/events/reject/<int:event_id>', methods=['POST'])
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER])
+def api_event_reject(event_id):
+    event = Event.query.get_or_404(event_id)
+    event.status = 'rejected'
+    db.session.commit()
+    # Hier könnte eine Benachrichtigung an den Ersteller gesendet werden.
+    return jsonify({"status": "success", "message": "Termin abgelehnt."})
 
 def style_worksheet(ws, header_fill_color="4F81BD"):
     """
@@ -1811,3 +1850,262 @@ def kanban_edit_card(card_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Karte aktualisiert'})
+
+
+@app.route('/verwaltung/vertretungsplan')
+@login_required
+# @admin_oder_planer_required # Fügen Sie Ihren Berechtigungs-Decorator hinzu
+def vertretungsplan_verwalten():
+    """Zeigt die Verwaltungsseite für den Vertretungsplan an."""
+    plan = Vertretungsplan.query.first()
+
+    return render_template('vertretungsplan_verwalten.html', 
+                           title="Vertretungsplan verwalten",
+                           aktiver_plan=plan)
+
+
+@app.route('/vertretungsplan/erstellen', methods=['POST'])
+@login_required
+# @admin_oder_planer_required # Fügen Sie Ihren Berechtigungs-Decorator hinzu
+def vertretungsplan_erstellen():
+    """Erstellt einen neuen Vertretungsplan als Kopie des Haupt-Stundenplans."""
+    gueltig_von_str = request.form.get('gueltig_von')
+    gueltig_bis_str = request.form.get('gueltig_bis')
+    vorlage_woche = request.form.get('vorlage_woche')
+
+    try:
+        gueltig_von = datetime.strptime(gueltig_von_str, '%Y-%m-%d').date()
+        gueltig_bis = datetime.strptime(gueltig_bis_str, '%Y-%m-%d').date()
+
+        if gueltig_von > gueltig_bis:
+            flash('Das "Gültig von"-Datum darf nicht nach dem "Gültig bis"-Datum liegen.', 'danger')
+            return redirect(url_for('vertretungsplan_verwalten'))
+
+        # 1. Bestehenden Plan löschen
+        Vertretungsplan.query.delete()
+        
+        # 2. Neuen Plan-Container erstellen
+        neuer_plan = Vertretungsplan(gueltig_von=gueltig_von, gueltig_bis=gueltig_bis, vorlage_woche=vorlage_woche)
+        db.session.add(neuer_plan)
+        db.session.flush()  # Nötig, um die ID für die Einträge zu bekommen
+
+        # 3. Einträge aus der Vorlage kopieren
+        vorlage_eintraege = StundenplanEintrag.query.filter_by(woche=vorlage_woche).all()
+        if not vorlage_eintraege:
+            db.session.rollback()
+            flash(f'Vorlage (Woche {vorlage_woche}) ist leer. Kein Vertretungsplan erstellt.', 'warning')
+            return redirect(url_for('vertretungsplan_verwalten'))
+
+        for eintrag in vorlage_eintraege:
+            neuer_eintrag = VertretungsplanEintrag(
+                vertretungsplan_id=neuer_plan.id,
+                tag=eintrag.tag,
+                slot=eintrag.slot,
+                klasse_id=eintrag.klasse_id,
+                angebot_id=eintrag.angebot_id,
+                lehrer1_id=eintrag.lehrer1_id,
+                lehrer2_id=eintrag.lehrer2_id
+            )
+            db.session.add(neuer_eintrag)
+
+        db.session.commit()
+        flash('Vertretungsplan wurde erfolgreich erstellt.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ein Fehler ist aufgetreten: {str(e)}', 'danger')
+        app.logger.error(f"Fehler beim Erstellen des Vertretungsplans: {e}")
+
+    return redirect(url_for('vertretungsplan_verwalten'))
+
+
+@app.route('/vertretungsplan/loeschen', methods=['POST'])
+@login_required
+# @admin_oder_planer_required # Fügen Sie Ihren Berechtigungs-Decorator hinzu
+def vertretungsplan_loeschen():
+    """Löscht den aktuell aktiven Vertretungsplan."""
+    try:
+        Vertretungsplan.query.delete()
+        db.session.commit()
+        flash('Der aktive Vertretungsplan wurde erfolgreich gelöscht.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Löschen des Vertretungsplans: {str(e)}', 'danger')
+        app.logger.error(f"Fehler beim Löschen des Vertretungsplans: {e}")
+        
+    return redirect(url_for('vertretungsplan_verwalten'))
+
+
+@app.route('/vertretungsplan/bearbeiten/<int:plan_id>')
+@login_required
+# @admin_oder_planer_required # Berechtigungsprüfung nicht vergessen
+def vertretungsplan_bearbeiten(plan_id):
+    """Zeigt die Seite zum Bearbeiten eines Vertretungsplans an."""
+    plan = Vertretungsplan.query.get_or_404(plan_id)
+    
+    # Lade alle Daten, die für die Anzeige des Plans benötigt werden.
+    # Diese Logik ist sehr ähnlich zur stundenplan_verwaltung.
+    
+    # --- NEU: Klassen basierend auf der Vorlagen-Woche des Plans filtern ---
+    woche = plan.vorlage_woche
+    klassen_reihenfolge_a_str = get_setting('klassen_reihenfolge_a', '')
+    klassen_reihenfolge_b_str = get_setting('klassen_reihenfolge_b', '')
+    alle_klassen_map = {k.name: k for k in Klasse.query.all()}
+    
+    if woche == 'A':
+        geordnete_klassen_namen = klassen_reihenfolge_a_str.split(',')
+    else:
+        geordnete_klassen_namen = klassen_reihenfolge_b_str.split(',')
+        
+    geordnete_klassen = [alle_klassen_map[name] for name in geordnete_klassen_namen if name in alle_klassen_map]
+    
+    zeiten_text = get_setting('zeiten_text', '08:00-08:45\n08:45-09:30\n09:30-09:45 Pause\n09:45-10:30\n10:30-11:15\n11:15-11:45 Pause\n11:45-12:30\n12:30-13:15')
+    zeit_slots = parse_zeiten(zeiten_text)
+    num_slots = len(zeit_slots)
+
+    plan_eintraege = VertretungsplanEintrag.query.filter_by(vertretungsplan_id=plan.id).all()
+    plan_data_per_tag = defaultdict(lambda: defaultdict(dict))
+    for eintrag in plan_eintraege:
+        if not all([eintrag.angebot, eintrag.lehrer1, eintrag.klasse]):
+            continue
+        eintrag_dict = {
+            'angebot': {'id': eintrag.angebot.id, 'name': eintrag.angebot.name},
+            'lehrer1': {'id': eintrag.lehrer1.id, 'name': eintrag.lehrer1.name, 'farbe': eintrag.lehrer1.farbe},
+            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name, 'farbe': eintrag.lehrer2.farbe} if eintrag.lehrer2 else None
+        }
+        if eintrag.slot < num_slots:
+            plan_data_per_tag[eintrag.tag][eintrag.slot][eintrag.klasse.name] = eintrag_dict
+
+    return render_template('vertretungsplan_bearbeiten.html',
+                           title=f"Vertretungsplan bearbeiten",
+                           plan=plan,
+                           geordnete_klassen=geordnete_klassen,
+                           plan_data_per_tag=plan_data_per_tag,
+                           zeit_slots=zeit_slots,
+                           tage_der_woche=TAGE_DER_WOCHE,
+                           alle_lehrer=Lehrer.query.order_by(Lehrer.name).all(),
+                           alle_angebote=Angebot.query.order_by(Angebot.name).all()
+                           )
+
+@app.route('/api/vertretungsplan/update', methods=['POST'])
+@login_required
+# @admin_oder_planer_required
+def vertretungsplan_update():
+    """API-Endpunkt zum Aktualisieren eines Eintrags im Vertretungsplan."""
+    data = request.json
+    try:
+        plan_id = data.get("plan_id")
+        klasse_name = data.get("klasse_name")
+        tag = data.get("tag")
+        slot = int(data.get("slot"))
+        angebot_id = int(data.get("angebot_id"))
+        lehrer1_id = int(data.get("lehrer1_id"))
+        lehrer2_id = int(data.get("lehrer2_id")) if data.get("lehrer2_id") else None
+
+        klasse_obj = Klasse.query.filter_by(name=klasse_name).first()
+        if not klasse_obj:
+            return jsonify({"success": False, "error": "Klasse nicht gefunden"}), 404
+
+        # Finde bestehenden Eintrag oder erstelle einen neuen
+        eintrag = VertretungsplanEintrag.query.filter_by(
+            vertretungsplan_id=plan_id, tag=tag, slot=slot, klasse_id=klasse_obj.id
+        ).first()
+
+        if eintrag:
+            eintrag.angebot_id = angebot_id
+            eintrag.lehrer1_id = lehrer1_id
+            eintrag.lehrer2_id = lehrer2_id
+        else:
+            eintrag = VertretungsplanEintrag(
+                vertretungsplan_id=plan_id,
+                tag=tag,
+                slot=slot,
+                klasse_id=klasse_obj.id,
+                angebot_id=angebot_id,
+                lehrer1_id=lehrer1_id,
+                lehrer2_id=lehrer2_id
+            )
+            db.session.add(eintrag)
+        
+        db.session.commit()
+        return jsonify({"success": True, "reload": True})
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fehler beim Update des Vertretungsplans: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/vertretungsplan/delete', methods=['POST'])
+@login_required
+# @admin_oder_planer_required
+def vertretungsplan_delete_entry():
+    """API-Endpunkt zum Löschen eines Eintrags aus dem Vertretungsplan."""
+    data = request.json
+    try:
+        plan_id = data.get("plan_id")
+        klasse_name = data.get("klasse_name")
+        tag = data.get("tag")
+        slot = int(data.get("slot"))
+
+        klasse_obj = Klasse.query.filter_by(name=klasse_name).first()
+        if klasse_obj:
+            VertretungsplanEintrag.query.filter_by(
+                vertretungsplan_id=plan_id, tag=tag, slot=slot, klasse_id=klasse_obj.id
+            ).delete()
+            db.session.commit()
+        
+        return jsonify({"success": True, "reload": True})
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fehler beim Löschen eines Vertretungsplan-Eintrags: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# --- NEUE ROUTE für die schreibgeschützte Ansicht ---
+@app.route('/vertretungsplan/ansicht/<int:plan_id>')
+@login_required
+@role_required([ROLE_ADMIN, ROLE_PLANER, ROLE_BENUTZER]) # Alle dürfen sehen
+def vertretungsplan_anzeigen_readonly(plan_id):
+    """Zeigt eine schreibgeschützte Ansicht eines Vertretungsplans."""
+    plan = Vertretungsplan.query.get_or_404(plan_id)
+    
+    # Logik zum Laden der Daten ist identisch zur Bearbeitungs-Route
+    woche = plan.vorlage_woche
+    klassen_reihenfolge_a_str = get_setting('klassen_reihenfolge_a', '')
+    klassen_reihenfolge_b_str = get_setting('klassen_reihenfolge_b', '')
+    alle_klassen_map = {k.name: k for k in Klasse.query.all()}
+    
+    if woche == 'A':
+        geordnete_klassen_namen = klassen_reihenfolge_a_str.split(',')
+    else:
+        geordnete_klassen_namen = klassen_reihenfolge_b_str.split(',')
+        
+    geordnete_klassen = [alle_klassen_map[name] for name in geordnete_klassen_namen if name in alle_klassen_map]
+    
+    zeiten_text = get_setting('zeiten_text', '08:00-08:45\n08:45-09:30\n09:30-09:45 Pause\n09:45-10:30\n10:30-11:15\n11:15-11:45 Pause\n11:45-12:30\n12:30-13:15')
+    zeit_slots = parse_zeiten(zeiten_text)
+    num_slots = len(zeit_slots)
+
+    plan_eintraege = VertretungsplanEintrag.query.filter_by(vertretungsplan_id=plan.id).all()
+    plan_data_per_tag = defaultdict(lambda: defaultdict(dict))
+    for eintrag in plan_eintraege:
+        if not all([eintrag.angebot, eintrag.lehrer1, eintrag.klasse]):
+            continue
+        eintrag_dict = {
+            'angebot': {'id': eintrag.angebot.id, 'name': eintrag.angebot.name},
+            'lehrer1': {'id': eintrag.lehrer1.id, 'name': eintrag.lehrer1.name, 'farbe': eintrag.lehrer1.farbe},
+            'lehrer2': {'id': eintrag.lehrer2.id, 'name': eintrag.lehrer2.name, 'farbe': eintrag.lehrer2.farbe} if eintrag.lehrer2 else None
+        }
+        if eintrag.slot < num_slots:
+            plan_data_per_tag[eintrag.tag][eintrag.slot][eintrag.klasse.name] = eintrag_dict
+
+    return render_template('vertretungsplan_ansicht.html',
+                           title=f"Vertretungsplan (Ansicht)",
+                           plan=plan,
+                           geordnete_klassen=geordnete_klassen,
+                           plan_data_per_tag=plan_data_per_tag,
+                           zeit_slots=zeit_slots,
+                           tage_der_woche=TAGE_DER_WOCHE,
+                           alle_lehrer=Lehrer.query.order_by(Lehrer.name).all()
+                           )

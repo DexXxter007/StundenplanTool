@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Vertretungsplan verwalten</h1>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="fa fa-calendar-alt me-2"></i>Neuen Vertretungsplan erstellen
+  </div>
+  <div class="card-body">
+    <form action="{{ url_for('vertretungsplan_erstellen') }}" method="post">
+      <p class="card-text">
+        Erstellt eine bearbeitbare Kopie des Stundenplans für einen bestimmten Zeitraum.
+        Ein eventuell bereits bestehender Vertretungsplan wird dabei überschrieben.
+      </p>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="vertretung_von" class="form-label">Gültig von</label>
+          <input type="date" class="form-control" id="vertretung_von" name="gueltig_von" required>
+        </div>
+        <div class="col-md-3">
+          <label for="vertretung_bis" class="form-label">Gültig bis</label>
+          <input type="date" class="form-control" id="vertretung_bis" name="gueltig_bis" required>
+        </div>
+        <div class="col-md-3">
+          <label for="vorlage_woche" class="form-label">Vorlage aus</label>
+          <select class="form-select" id="vorlage_woche" name="vorlage_woche" required>
+            <option value="A">Stundenplan Woche A</option>
+            <option value="B">Stundenplan Woche B</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100"><i class="fa fa-copy"></i> Vertretungsplan erstellen</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if aktiver_plan %}
+<div class="card mb-4">
+  <div class="card-header bg-success text-white">
+    <i class="fa fa-check-circle me-2"></i>
+    Gespeicherter Vertretungsplan
+  </div>
+  <div class="card-body">
+    <p>
+      Es ist ein Vertretungsplan für den Zeitraum vom
+      <strong>{{ aktiver_plan.gueltig_von.strftime('%d.%m.%Y') }}</strong> bis 
+      <strong>{{ aktiver_plan.gueltig_bis.strftime('%d.%m.%Y') }}</strong> gespeichert.
+    </p>
+    <p class="text-success">
+      <i class="fa fa-check me-2"></i>
+      Dieser Plan wird auf dem Dashboard verlinkt.
+    </p>
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{{ url_for('vertretungsplan_bearbeiten', plan_id=aktiver_plan.id) }}" class="btn btn-warning"><i class="fa fa-edit"></i> Plan bearbeiten</a>
+      <form action="{{ url_for('vertretungsplan_loeschen') }}" method="post" onsubmit="return confirm('Möchten Sie den aktiven Vertretungsplan wirklich unwiderruflich löschen?');">
+        <button type="submit" class="btn btn-danger"><i class="fa fa-trash"></i> Plan löschen</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info" id="vertretungsplan-anzeige">
+  <i class="fa fa-info-circle me-2"></i>
+  Es ist aktuell kein Vertretungsplan in der Datenbank gespeichert.
+</div>
+{% endif %}
+
+{% endblock %}

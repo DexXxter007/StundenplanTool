@@ -10,21 +10,12 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
-{# NEU: Hinweis auf aktiven Vertretungsplan #}
-{% if is_vertretungsplan and aktiver_vertretungsplan %}
-<a href="{{ url_for('vertretungsplan_anzeigen_readonly', plan_id=aktiver_vertretungsplan.id) }}" class="text-decoration-none">
-  <div class="alert alert-success druck-nicht" role="alert">
+<div class="alert alert-info druck-nicht d-flex justify-content-between align-items-center">
+  <span>
     <i class="fa fa-info-circle me-2"></i>
-    <strong>Hinweis:</strong> Ein Vertretungsplan ist vorhanden (gültig vom {{ aktiver_vertretungsplan.gueltig_von.strftime('%d.%m.%Y') }} bis {{ aktiver_vertretungsplan.gueltig_bis.strftime('%d.%m.%Y') }}). <strong>Klicken Sie hier, um ihn anzuzeigen.</strong>
-  </div>
-</a>
-{% endif %}
-
-<div class="mb-3 d-flex align-items-center druck-nicht">
-  {# ÄNDERUNG: Wochenauswahl wird immer angezeigt #}
-  <a href="{{ url_for('stundenplan_anzeigen', woche='A') }}" class="btn btn-outline-primary {% if woche == 'A' %}active{% endif %} me-2">Woche A</a>
-  <a href="{{ url_for('stundenplan_anzeigen', woche='B') }}" class="btn btn-outline-primary {% if woche == 'B' %}active{% endif %}">Woche B</a>
-  <button type="button" class="btn btn-outline-secondary ms-auto" onclick="window.print()">Drucken</button>
+    Dieser Plan ist gültig vom <strong>{{ plan.gueltig_von.strftime('%d.%m.%Y') }}</strong> bis <strong>{{ plan.gueltig_bis.strftime('%d.%m.%Y') }}</strong>.
+  </span>
+  <a href="{{ url_for('stundenplan_anzeigen') }}" class="btn btn-sm btn-outline-secondary">Zurück zum Dashboard</a>
 </div>
 
 <div class="stundenplan-tables">
@@ -58,6 +49,9 @@
                 {% set tag_data = plan_data_per_tag[tag] if plan_data_per_tag[tag] is defined else None %}
                 {% set slot_data = tag_data[slot_idx] if tag_data and (slot_idx in tag_data) else None %}
                 {% set eintrag = slot_data[klasse.name] if slot_data and (klasse.name in slot_data) else None %}
+                {% if eintrag and eintrag.lehrer2 and not eintrag.lehrer2.farbe %}
+                  {% set _ = eintrag.lehrer2.update({'farbe': alle_lehrer | selectattr('id', 'equalto', eintrag.lehrer2.id) | map(attribute='farbe') | list | first }) %}
+                {% endif %}
                 <td class="plan-cell" style="background: none; min-width: 120px; min-height: 60px; max-width: 160px; max-height: 80px; padding: 0; vertical-align: middle; text-align: center;">
                   {% if eintrag and eintrag.lehrer1 and eintrag.lehrer2 %}
                     <div style="position: relative; width: 100%; height: 60px; min-height: 60px; max-height: 80px; overflow: hidden;">

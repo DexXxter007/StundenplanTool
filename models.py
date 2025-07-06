@@ -145,9 +145,11 @@ class Event(db.Model):
     all_day = db.Column(db.Boolean, default=False, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('events', lazy=True))
+    # NEU: Status für die Genehmigung
+    status = db.Column(db.String(20), default='pending', nullable=False) # Werte: 'pending', 'approved', 'rejected'
 
     def __repr__(self):
-        return f"Event('{self.title}', '{self.start}')"
+        return f"Event('{self.title}', '{self.start}', '{self.status}')"
 
 # =====================================================================
 # Kanban-Board
@@ -175,3 +177,40 @@ class KanbanCard(db.Model):
 
     def __repr__(self):
         return f"KanbanCard('{self.content}', '{self.position}')"
+
+# =====================================================================
+# Vertretungsplan
+# =====================================================================
+
+class Vertretungsplan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    gueltig_von = db.Column(db.Date, nullable=False)
+    gueltig_bis = db.Column(db.Date, nullable=False)
+    vorlage_woche = db.Column(db.String(1), nullable=False) # NEU: Speichert 'A' oder 'B'
+    erstellt_am = db.Column(db.DateTime, default=datetime.utcnow)
+    # Dies sorgt dafür, dass beim Löschen eines Plans auch alle zugehörigen Einträge gelöscht werden.
+    eintraege = db.relationship('VertretungsplanEintrag', backref='vertretungsplan', lazy=True, cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<Vertretungsplan von {self.gueltig_von.strftime("%d.%m")} bis {self.gueltig_bis.strftime("%d.%m")}>'
+
+class VertretungsplanEintrag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    vertretungsplan_id = db.Column(db.Integer, db.ForeignKey('vertretungsplan.id'), nullable=False)
+    
+    # Dies sind die kopierten Felder aus dem Hauptstundenplan
+    tag = db.Column(db.String(20), nullable=False)
+    slot = db.Column(db.Integer, nullable=False)
+    klasse_id = db.Column(db.Integer, db.ForeignKey('klasse.id'), nullable=False)
+    angebot_id = db.Column(db.Integer, db.ForeignKey('angebot.id'), nullable=False)
+    lehrer1_id = db.Column(db.Integer, db.ForeignKey('lehrer.id'), nullable=False)
+    lehrer2_id = db.Column(db.Integer, db.ForeignKey('lehrer.id'), nullable=True)
+
+    # Beziehungen, um auf die verknüpften Objekte zugreifen zu können
+    klasse = db.relationship('Klasse')
+    angebot = db.relationship('Angebot')
+    lehrer1 = db.relationship('Lehrer', foreign_keys=[lehrer1_id])
+    lehrer2 = db.relationship('Lehrer', foreign_keys=[lehrer2_id])
+
+    def __repr__(self):
+        return f'<VertretungsplanEintrag für Plan {self.vertretungsplan_id}>'
