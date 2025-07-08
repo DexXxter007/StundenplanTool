@@ -1,10 +1,10 @@
 Hallo,
 
-Ein neuer Kalendereintrag wurde von {{ creator.username }} erstellt:
+der Benutzer {{ creator.username }} hat einen neuen Termin zur Genehmigung eingereicht:
 
-Titel: {{ event.title }}
-Start: {{ event.start.strftime('%d.%m.%Y %H:%M') }}
-{% if event.end %}Ende: {{ event.end.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+- Titel: {{ event.title }}
+- Start: {{ event.start.strftime('%d.%m.%Y um %H:%M Uhr') }}
 
-Viele Grüße,
-Ihr Stundentool
+Bitte prüfen Sie den Termin im Kalender des Stundentools.
+
+Mit freundlichen Grüßen, Dein Stundentool

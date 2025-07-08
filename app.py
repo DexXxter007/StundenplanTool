@@ -1602,9 +1602,18 @@ def api_events_add():
             html = render_template('email/kalender_notification.html', event=event, creator=current_user)
             text = render_template('email/kalender_notification.txt', event=event, creator=current_user)
             send_email(f"Neuer Kalendereintrag: {event.title}", recipients, html, text)
-    except Exception as e:
+    except Exception as e:       
         print(f"Fehler beim Senden der Kalender-Benachrichtigung: {e}")
     return jsonify({"status": "success", "id": event.id, "message": "Event erstellt"})
+    #email Benachrichtigungen
+    try:
+        users_to_notify = User.query.filter(User.role.in_([ROLE_ADMIN, ROLE_PLANER]), User.email.isnot(None)).all()
+        recipients = [user.email for user in users_to_notify]
+        html = render_template('email/kalender_notification.html', event=event, creator=current_user)
+        text = render_template('email/kalender_notification.txt', event=event, creator=current_user)
+        send_email(f"Neuer Kalendereintrag: {event.title}", recipients, html, text)
+    except Exception as e:
+        print(f"Fehler beim Senden der Kalender-Benachrichtigung: {e}")
 
 @app.route('/api/events/update/<int:event_id>', methods=['POST'])
 @login_required

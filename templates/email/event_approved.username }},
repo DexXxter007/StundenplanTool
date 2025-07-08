@@ -1,0 +1,5 @@
+Hallo {{ creator.username }},
+
+Dein im Stundentool eingetragener Termin "{{ event.title }}" für den {{ event.start.strftime('%d.%m.%Y um %H:%M Uhr') }} wurde soeben genehmigt.
+
+Mit freundlichen Grüßen, Dein Stundentool

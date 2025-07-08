@@ -1,12 +1,16 @@
-<p>Hallo,</p>
-<p>
-    Ein neuer Kalendereintrag wurde von <strong>{{ creator.username }}</strong> erstellt:
-</p>
-<ul>
-    <li><strong>Titel:</strong> {{ event.title }}</li>
-    <li><strong>Start:</strong> {{ event.start.strftime('%d.%m.%Y %H:%M') }}</li>
-    {% if event.end %}
-    <li><strong>Ende:</strong> {{ event.end.strftime('%d.%m.%Y %H:%M') }}</li>
-    {% endif %}
-</ul>
-<p>Viele Grüße,<br>Ihr Stundentool</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Neuer Kalendereintrag</title>
+</head>
+<body>
+    <p>Hallo,</p>
+    <p>der Benutzer <b>{{ creator.username }}</b> hat einen neuen Termin zur Genehmigung eingereicht:</p>
+    <ul>
+        <li><b>Titel:</b> {{ event.title }}</li>
+        <li><b>Start:</b> {{ event.start.strftime('%d.%m.%Y um %H:%M Uhr') }}</li>
+    </ul>
+    <p>Bitte prüfen Sie den Termin im Kalender des Stundentools.</p>
+    <p>Mit freundlichen Grüßen,<br>Dein Stundentool</p>
+</body>
+</html>
