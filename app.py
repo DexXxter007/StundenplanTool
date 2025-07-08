@@ -33,12 +33,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db' # Oder 'sqlite:///da
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Mail Konfiguration (aus Umgebungsvariablen laden) ---
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.googlemail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME') # z.B. deine-email@gmail.com
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') # App-Passwort von Google
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT'))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'false').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
 # Initialisiere Erweiterungen
 db.init_app(app) # Initialisiere SQLAlchemy mit der App
